@@ -1,0 +1,159 @@
+# This file is used to ignore files which are generated
+# ----------------------------------------------------------------------------
+
+*~
+*.autosave
+*.a
+*.core
+*.moc
+*.o
+*.obj
+*.orig
+*.rej
+*.so
+*.so.*
+*_pch.h.cpp
+*_resource.rc
+*.qm
+.#*
+*.*#
+core
+!core/
+tags
+.DS_Store
+.directory
+*.debug
+Makefile*
+*.prl
+*.app
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+Thumbs.db
+*.res
+*.rc
+/.qmake.cache
+/.qmake.stash
+
+# qtcreator generated files
+*.pro.user*
+*.qbs.user*
+CMakeLists.txt.user*
+
+# xemacs temporary files
+*.flc
+
+# Vim temporary files
+.*.swp
+
+# Visual Studio generated files
+*.ib_pdb_index
+*.idb
+*.ilk
+*.pdb
+*.sln
+*.suo
+*.vcproj
+*vcproj.*.*.user
+*.ncb
+*.sdf
+*.opensdf
+*.vcxproj
+*vcxproj.*
+
+# MinGW generated files
+*.Debug
+*.Release
+
+# Python byte code
+*.pyc
+
+# Binaries
+# --------
+*.dll
+*.exe
+
+# Directories with generated files
+.moc/
+.obj/
+.pch/
+.rcc/
+.uic/
+/build*/
+
+# --- QT CREATOR & QMAKE ---
+*.user
+*.user.*
+*.pro.user
+build/
+build-*/
+*.qmake.stash
+Makefile*
+object_script.*
+*.Release
+*.Debug
+release/
+debug/
+*.o
+*.obj
+*.moc
+*.ui
+moc_*.cpp
+.qmake.cache
+.qmake.stash
+
+# --- VISUAL STUDIO & VS CODE ---
+.vs/
+.vscode/
+*.ipch
+*.ap
+*.idb
+*.pdb
+*.suo
+*.opensdf
+*.sdf
+*.sln
+*.vcxproj
+*.vcxproj.filters
+
+# --- CLANGD (Auto-completion cache) ---
+.qtc_clangd/
+.cache/
+compile_commands.json
+
+# --- WINDOWS THUMBS ---
+Thumbs.db
+Desktop.ini
+
+# Pliki kompilacji C++
+*.o
+*.obj
+*.moc
+*.ui
+*.db
+*.idb
+*.pdb
+*.suo
+*.sln
+*.vcxproj*
+*.filters
+*.user
+
+# Pliki generowane przez Qt (bardzo ważne!)
+ui_*.h
+moc_*.cpp
+qrc_*.cpp
+Makefile*
+.qmake.stash
+object_script.*
+
+# Foldery wyjściowe (które powstaną wewnątrz projektu)
+debug/
+release/
+.qtc_clangd/
+.vs/
+
+# Pliki wykonywalne
+*.exe
+*.dll
+/.qtc_clangd
