@@ -1,0 +1,78 @@
+#pragma once
+#include "Reg_PID.h"
+#include "ARX.h"
+#include "GeneratorSygnalu.h"
+#include "SymulatorUAR.h"
+#include <vector>
+#include <QObject>
+
+class ZarzadzanieCzasem;
+
+class MenadzerSymulacji : public QObject
+{
+    Q_OBJECT
+
+public:
+    enum class TypGeneratora { Sinusoidalny, Prostokatny };
+
+    MenadzerSymulacji(double Kp, double Ti, double Td, double Tp, double U_min, double U_max,
+                      const std::vector<double>& A, const std::vector<double>& B, int k, double pozsz, QObject *parent = nullptr);
+
+    void wykonajKrokSymulacji(double czas);
+
+    void startSymulacji();
+    void stopSymulacji();
+    void resetSymulacji();
+    bool czySymulacjaUruchomiona() const;
+
+    double getWartoscZadana() const;
+    double getWartoscRegulowana() const { return _ostatnia_wartosc_regulowana; }  // ✅ DODAJ
+    double getSterowanie() const;
+    double getUchyb() const;
+
+    RegulatorPID::Skladowe getSkladowePID() const;
+    void resetCalkiPID();
+    void resetPamieciPID();
+
+    void setTypGeneratora(TypGeneratora typ);
+    void setParametryGeneratoraSinusoidalnego(double amplituda, double okres, double skladowaStala);
+    void setParametryGeneratoraProstokatnego(double amplituda, double okres, double wypelnienie, double skladowaStala);
+
+    void setNastawyPID(double Kp, double Ti, double Td, double U_min, double U_max, double Tp);
+    void setLiczCalkPID(RegulatorPID::LiczCalk tryb);
+    void setStalaCalkPID(double Ti);
+
+    void setParametryARX(const std::vector<double>& A, const std::vector<double>& B, int k, double pozsz);
+    void resetModelARX();
+
+    void setOgraniczeniaARX(bool wlaczone);
+    void setOgraniczeniaSterowania(double min, double max);
+    void setOgraniczeniaRegulowanej(double min, double max);
+
+    ZarzadzanieCzasem* getZarzadzanieCzasem() { return _czasownik; }
+
+    bool getOgraniczeniaARX() const { return _model. ograniczenia(); }
+    double getUMinARX() const { return _model. getUMin(); }
+    double getUMaxARX() const { return _model.getUMax(); }
+    double getYMinARX() const { return _model.getYMin(); }
+    double getYMaxARX() const { return _model.getYMax(); }
+
+signals:
+    void noweDataReady(double czas, double y_zad, double y, double u, double e,
+                       RegulatorPID::Skladowe skladowe);
+
+private:
+    RegulatorPID _regulator;
+    ModelARX _model;
+    SymulatorUAR _symulator;
+
+    SygnalSinusoidalny _gen_sinusoidalny;
+    SygnalProstokatny _gen_prostokatny;
+    TypGeneratora _aktywny_generator;
+
+    double _ostatnia_wartosc_zadana;
+    double _ostatnia_wartosc_regulowana;
+    bool _symulacja_uruchomiona;
+
+    ZarzadzanieCzasem* _czasownik;
+};
