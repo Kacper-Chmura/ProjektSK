@@ -1,0 +1,25 @@
+{
+  "ModelARX": {
+    "A": [
+      -0.4
+    ],
+    "B": [
+      0.6
+    ],
+    "k": 1,
+    "ograniczenia_wlaczone": true,
+    "pozsz": 0.0,
+    "u_max": 10.0,
+    "u_min": -10.0,
+    "y_max": 10.0,
+    "y_min": -10.0
+  },
+  "RegulatorPID": {
+    "Kp": 0.5,
+    "Td": 0.1,
+    "Ti": 10.0,
+    "Tp": 1.0,
+    "U_max": 100.0,
+    "U_min": -100.0
+  }
+}
