@@ -71,7 +71,7 @@ void MenadzerSymulacji::startSymulacji() {
 void MenadzerSymulacji::stopSymulacji() {
     _symulacja_uruchomiona = false;
     _czasownik->stop();
-    _regulator.resetCalki();
+    // Niepotrzebnie: _regulator.resetCalki();
 }
 bool MenadzerSymulacji::czySymulacjaUruchomiona() const { return _symulacja_uruchomiona; }
 
