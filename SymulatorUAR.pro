@@ -47,5 +47,5 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 DISTFILES += \
     konfiguracja.json
 
-QMAKE_CXXFLAGS += -Wa,-mbig-obj
+QMAKE_CXXFLAGS += /bigobj
 

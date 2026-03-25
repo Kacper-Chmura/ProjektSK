@@ -1,5 +1,6 @@
 #include "MenadzerSymulacji.h"
 #include "ZarzadzanieCzasem.h"
+#include <vector>
 
 MenadzerSymulacji::MenadzerSymulacji(double Kp, double Ti, double Td, double Tp, double U_min, double U_max,
                                      const std::vector<double>& A, const std::vector<double>& B, int k, double pozsz, QObject *parent)
