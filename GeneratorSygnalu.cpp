@@ -38,7 +38,8 @@ double SygnalProstokatny::generuj(double t)
 	double faza = std::fmod(t, mOkres);
 	if (faza < 0.0) faza += mOkres;
 	double prog = mWypelnienie * mOkres;
-    return (faza < prog) ? (mSkladowaStala + mAmplituda) : (mSkladowaStala - mAmplituda);
+    return (faza < prog) ? (mSkladowaStala + mAmplituda) : (mSkladowaStala);
+    // To było źle: return (faza < prog) ? (mSkladowaStala + mAmplituda) : (mSkladowaStala - mAmplituda);
 }
 
 void SygnalProstokatny::ustawParametry(double amplituda, double okres, double skladowaStala)
