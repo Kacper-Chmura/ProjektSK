@@ -14,13 +14,25 @@ ModelARX::ModelARX(std::vector<double> A, std::vector<double> B, int k, double p
 
 void ModelARX::updateRozmiar()
 {
-    size_t n = 0;
-    if (_A.size() > _B.size()) {
-        n = _A.size();
-    }
-    else {
-        n = _B.size() + _k;
-    }
+    /*
+     Tu by³ b³¹d, wywala assert gdy jest wiêcej wektorów A ni¿ B przy du¿ym opóŸnieniu transportowym
+        size_t n = 0;
+        if (_A.size() > _B.size()) {
+            n = _A.size();
+        }
+        else {
+            n = _B.size() + _k;
+        }
+        _u.resize(n, 0.0);
+        _y.resize(_A.size(), 0.0);
+
+    Nastêpnie wywo³ywane jest ModelARX::symuluj() w SymulatorUAR.
+    Program dochodzi do  y += std::inner_product(_B.begin(), _B.end(), _u.begin() + _k, 0.0);
+    Zmienna _k wynosi 5. Program próbuje pobraæ  _u.begin() + 5. Poniewa¿ bufor ma w tym momencie rozmiar tylko 3, odwo³anie do 5
+        Debug assertion failed
+        cannot seek deque iterator after range
+    */
+    size_t n = std::max(_A.size(), _B.size() + _k);
     _u.resize(n, 0.0);
     _y.resize(_A.size(), 0.0);
 }
