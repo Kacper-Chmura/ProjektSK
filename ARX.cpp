@@ -26,7 +26,7 @@ void ModelARX::updateRozmiar()
         _u.resize(n, 0.0);
         _y.resize(_A.size(), 0.0);
 
-    Nastêpnie wywo³ywane jest ModelARX::symuluj() w SymulatorUAR.
+    Nastêpnie wywo³ywane jest ModelARX::symuluj() w SymulatorUAR
     Program dochodzi do  y += std::inner_product(_B.begin(), _B.end(), _u.begin() + _k, 0.0);
     Zmienna _k wynosi 5. Program próbuje pobraæ  _u.begin() + 5. Poniewa¿ bufor ma w tym momencie rozmiar tylko 3, odwo³anie do 5
         Debug assertion failed

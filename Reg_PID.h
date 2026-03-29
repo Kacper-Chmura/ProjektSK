@@ -22,6 +22,14 @@ public:
 
     Skladowe getOstatnieSkladowe() const { return _ostatnieSkladowe; }
 
+    double getKp() const { return _Kp; }
+    double getTi() const { return _Ti; }
+    double getTd() const { return _Td; }
+    double getTp() const { return _Tp; }
+    double getUMin() const { return _U_min; }
+    double getUMax() const { return _U_max; }
+    LiczCalk getLiczCalk() const { return _liczCalk; }
+
 private:
     double _Kp, _Ti, _Td, _Tp;
     double _U_min, _U_max;
