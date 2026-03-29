@@ -1,4 +1,4 @@
-QT       += core gui printsupport widgets
+QT       += core gui printsupport widgets network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -16,10 +16,14 @@ SOURCES += \
     SymulatorUAR.cpp \
     Testy_UAR.cpp \
     ZarzadzanieCzasem.cpp \
+    clientMW.cpp \
     dialogarx.cpp \
     main.cpp \
     mainwindow.cpp \
+    myTCPclient.cpp \
+    myTCPserver.cpp \
     qcustomplot.cpp \
+    serverMW.cpp
 
 HEADERS += \
     ARX.h \
@@ -29,11 +33,15 @@ HEADERS += \
     SymulatorUAR.h \
     Testy_UAR.h \
     ZarzadzanieCzasem.h \
+    clientMW.h \
     dialogarx.h \
     json.hpp \
     mainwindow.h \
+    myTCPclient.h \
+    myTCPserver.h \
     qcustomplot.h \
-    TestUtils.h
+    TestUtils.h \
+    serverMW.h
 
 FORMS += \
     dialogarx.ui \
