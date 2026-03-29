@@ -15,15 +15,15 @@ SOURCES += \
     Reg_PID.cpp \
     SymulatorUAR.cpp \
     Testy_UAR.cpp \
+    W_SIECIOWA/clientMW.cpp \
+    W_SIECIOWA/myTCPclient.cpp \
+    W_SIECIOWA/myTCPserver.cpp \
+    W_SIECIOWA/serverMW.cpp \
     ZarzadzanieCzasem.cpp \
-    clientMW.cpp \
     dialogarx.cpp \
     main.cpp \
     mainwindow.cpp \
-    myTCPclient.cpp \
-    myTCPserver.cpp \
     qcustomplot.cpp \
-    serverMW.cpp
 
 HEADERS += \
     ARX.h \
@@ -32,16 +32,16 @@ HEADERS += \
     Reg_PID.h \
     SymulatorUAR.h \
     Testy_UAR.h \
+    W_SIECIOWA/clientMW.h \
+    W_SIECIOWA/myTCPclient.h \
+    W_SIECIOWA/myTCPserver.h \
+    W_SIECIOWA/serverMW.h \
     ZarzadzanieCzasem.h \
-    clientMW.h \
     dialogarx.h \
     json.hpp \
     mainwindow.h \
-    myTCPclient.h \
-    myTCPserver.h \
     qcustomplot.h \
     TestUtils.h \
-    serverMW.h
 
 FORMS += \
     dialogarx.ui \
