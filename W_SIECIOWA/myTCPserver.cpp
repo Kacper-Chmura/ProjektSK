@@ -24,19 +24,25 @@ int MyTCPServer::getNumClients() {
 
 // myTCPserver.cpp / myTCPclient.cpp
 void MyTCPServer::wyslijRamke(quint8 typ, const QByteArray& payload, int numCli) {
+    if(numCli < 0 || numCli >= m_clients.length()) return;
+
     QByteArray frame;
     QDataStream out(&frame, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_6_0);
 
-    out << (quint8)0xAA << typ << (quint16)payload.size();
-    out.writeRawData(payload.constData(), payload.size()); // Kluczowe dla ARX
+    out << (quint8)0xAA;               // STX
+    out << typ;                        // Typ
+    out << (quint16)payload.size();    // Długość
 
+    // KLUCZOWE: writeRawData przesuwa wskaźnik strumienia
+    out.writeRawData(payload.constData(), payload.size());
+
+    // Teraz CRC zostanie dopisane NA KOŃCU, a nie na początku payloadu
     quint16 crc = 0;
     for (char b : frame) crc += (quint8)b;
     out << crc;
 
-    if(numCli >= 0 && numCli < m_clients.length())
-        m_clients.at(numCli)->write(frame);
+    m_clients.at(numCli)->write(frame);
 }
 int MyTCPServer::getClinetID() {
     QTcpSocket *client = static_cast<QTcpSocket*>(QObject::sender());
