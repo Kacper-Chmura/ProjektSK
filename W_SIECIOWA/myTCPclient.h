@@ -16,7 +16,7 @@ public:
     bool isConnected() { return m_socket.isOpen(); }
 
     // Nowa metoda wysyłająca ramkę
-    void wyslijRamke(int typ, int timestamp, const QByteArray& payload);
+    void wyslijRamke(quint8 typ, const QByteArray& payload);
 
 signals:
     void connected(QString adr, int port);

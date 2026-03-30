@@ -19,8 +19,7 @@ public:
     int getNumClients();
 
     // Nowa metoda wysyłająca ramkę
-    void wyslijRamke(int typ, int timestamp, const QByteArray& payload, int numCli);
-
+    void wyslijRamke(quint8 typ, const QByteArray& payload, int numCli);
 signals:
     void newClientConnected(QString adr);
     void clientDisconnetced(int num);
