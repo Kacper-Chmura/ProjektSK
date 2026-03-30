@@ -1,3 +1,5 @@
+#include "W_SIECIOWA/myTCPclient.h"
+#include "W_SIECIOWA/myTCPserver.h"
 #include "mainwindow.h"
 #include <QApplication>
 #include <QCommandLineParser>
@@ -106,6 +108,8 @@ int main(int argc, char *argv[])
     QCommandLineParser parser;
     parser.addHelpOption();
     parser.addOption(QCommandLineOption("test", "Uruchom testy i zakoncz"));
+    parser.addOption(QCommandLineOption("serwer", "Uruchom testowy serwer sieciowy")); // Zamiast --sieci
+    parser.addOption(QCommandLineOption("klient", "Uruchom testowy klient sieciowy"));  // Zamiast --sieci
     parser.process(a);
 
     if (parser.isSet("test")) {
@@ -122,7 +126,40 @@ int main(int argc, char *argv[])
 
         return 0;
     }
+    if (parser.isSet("serwer")) {
+        qDebug() << "--- TRYB KONSOLOWY: SERWER ---";
+        MyTCPServer* server = new MyTCPServer(&a);
 
+        if (server->startListening(12345)) {
+            qDebug() << "[SERWER] Czekam na porcie 12345...";
+        }
+
+        QObject::connect(server, &MyTCPServer::newClientConnected, [](QString adr){
+            qDebug() << "[SERWER] Podlaczyl sie klient:" << adr;
+        });
+
+        QObject::connect(server, &MyTCPServer::nowaRamkaOd, [](int typ, QByteArray payload, int numCli){
+            qDebug() << "[SERWER] Odebrano ramke. Typ:" << typ << " Tresc:" << payload.data();
+        });
+
+        return a.exec();
+    }
+
+    if (parser.isSet("klient")) {
+        qDebug() << "--- TRYB KONSOLOWY: KLIENT ---";
+        MyTCPClient* client = new MyTCPClient(&a);
+
+        qDebug() << "[KLIENT] Laczenie z 127.0.0.1:12345...";
+        client->connectTo("127.0.0.1", 12345);
+
+        QObject::connect(client, &MyTCPClient::connected, [client](){
+            qDebug() << "[KLIENT] Polaczono! Wysylam tekst testowy.";
+            QByteArray testPayload = "HELLO SERVER!";
+            client->wyslijRamke(99, 0, testPayload);
+        });
+
+        return a.exec();
+    }
     MainWindow w;
     w.show();
     return a.exec();
