@@ -2,6 +2,7 @@
 #include "qabstractsocket.h"
 #include <QDataStream>
 #include <QVector>
+#include <iostream>
 
 QByteArray serializePID(const RegulatorPID& pid, quint32 timestamp) {
     QByteArray buf;
@@ -33,13 +34,13 @@ quint32 deserializePID(QByteArray& buf, RegulatorPID& pid) {
 QByteArray serializeARX(const ModelARX& arx, quint32 timestamp) {
     QByteArray buf;
     QDataStream out(&buf, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0); // DODAJ TĘ LINIĘ
 
-    QVector<double> qA(arx.getA().begin(), arx.getA().end());
-    QVector<double> qB(arx.getB().begin(), arx.getB().end());
+    QVector<double> qA = QVector<double>(arx.getA().begin(), arx.getA().end());
+    QVector<double> qB = QVector<double>(arx.getB().begin(), arx.getB().end());
 
-    out << timestamp
-        << qA << qB
-        << (qint32)arx.getk() << arx.getpozsz() << arx.ograniczenia()
+    out << timestamp << qA << qB << (qint32)arx.getk()
+        << arx.getpozsz() << arx.ograniczenia()
         << arx.getUMin() << arx.getUMax()
         << arx.getYMin() << arx.getYMax();
 
@@ -47,6 +48,8 @@ QByteArray serializeARX(const ModelARX& arx, quint32 timestamp) {
 }
 
 quint32 deserializeARX(QByteArray& buf, ModelARX& arx) {
+    if (buf.isEmpty()) return 0;
+
     QDataStream in(&buf, QIODevice::ReadOnly);
     in.setVersion(QDataStream::Qt_6_0);
 
@@ -58,29 +61,19 @@ quint32 deserializeARX(QByteArray& buf, ModelARX& arx) {
     double umin, umax, ymin, ymax;
 
     in >> timestamp >> qA >> qB >> k >> pozsz >> ogr >> umin >> umax >> ymin >> ymax;
+
+    // DEBUG: Sprawdź w konsoli, co widzi program
     std::cout << "DEBUG: Rozmiar qA = " << qA.size() << " Rozmiar qB = " << qB.size() << std::endl;
-    // RĘCZNA I BEZPIECZNA KONWERSJA NA std::vector
-    std::vector<double> stdA, stdB;
 
-    // Bezpieczne przepisywanie A
-    if (!qA.isEmpty() && qA.size() < 1000) { // Zabezpieczenie przed "śmieciami"
-        stdA.resize(qA.size());
-        for(int i = 0; i < qA.size(); ++i) {
-            stdA[i] = qA.at(i);
-        }
-    }
+    if (qA.size() > 1000 || qB.size() > 1000) return 0;
 
-    // Bezpieczne przepisywanie B
-    if (!qB.isEmpty() && qB.size() < 1000) {
-        stdB.resize(qB.size());
-        for(int i = 0; i < qB.size(); ++i) {
-            stdB[i] = qB.at(i);
-        }
-    }
-    // PRZYPISANIE DO OBIEKTU
-    arx.setA(stdA);
-    arx.setB(stdB);
+    // Bezpieczne przepisywanie (bez iteratorów)
+    std::vector<double> sA, sB;
+    for(int i = 0; i < qA.size(); ++i) sA.push_back(qA.at(i));
+    for(int i = 0; i < qB.size(); ++i) sB.push_back(qB.at(i));
 
+    arx.setA(sA);
+    arx.setB(sB);
     arx.setk(k);
     arx.setpozsz(pozsz);
     arx.setOgraniczenia(ogr);

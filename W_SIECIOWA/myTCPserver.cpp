@@ -1,5 +1,6 @@
 #include "myTCPserver.h"
 #include <QDataStream>
+#include <iostream>
 
 MyTCPServer::MyTCPServer(QObject *parent) : QObject(parent), m_server(this)
 {
@@ -22,25 +23,28 @@ int MyTCPServer::getNumClients() {
 }
 
 void MyTCPServer::wyslijRamke(quint8 typ, const QByteArray& payload, int numCli) {
-    if(numCli >= m_clients.length()) return;
+    if(numCli < 0 || numCli >= m_clients.length()) return;
 
     QByteArray frame;
     QDataStream out(&frame, QIODevice::WriteOnly);
+    // KLUCZOWE: Wersja musi być identyczna wszędzie!
+    out.setVersion(QDataStream::Qt_6_0);
 
-    // Zgodnie z wytycznymi z obrazka:
-    out << (quint8)0xAA;               // STX (1 bajt)
-    out << typ;                        // Typ (1 bajt)
-    out << (quint16)payload.size();    // Długość (2 bajty)
+    // 1. Nagłówek (4 bajty)
+    out << (quint8)0xAA;
+    out << typ;
+    out << (quint16)payload.size();
 
-    frame.append(payload);             // Dane (zawierają już timestamp z Serializacja.h)
+    // 2. Dane - informujemy strumień o zapisie surowych bajtów
+    out.writeRawData(payload.constData(), payload.size());
 
+    // 3. Suma kontrolna - teraz zostanie dopisana PO danych
     quint16 crc = 0;
     for (char b : frame) crc += (quint8)b;
-    out << crc;                        // CRC (2 bajty)
+    out << crc;
 
     m_clients.at(numCli)->write(frame);
 }
-
 int MyTCPServer::getClinetID() {
     QTcpSocket *client = static_cast<QTcpSocket*>(QObject::sender());
     return m_clients.indexOf(client);
@@ -61,38 +65,22 @@ void MyTCPServer::slot_client_disconnetcted() {
     m_clients.removeAt(idx);
     emit clientDisconnetced(idx);
 }
-
 void MyTCPServer::slot_newMsg() {
     QTcpSocket* socket = qobject_cast<QTcpSocket*>(sender());
     if (!socket) return;
 
     QByteArray data = socket->readAll();
     QDataStream in(&data, QIODevice::ReadOnly);
+    in.setVersion(QDataStream::Qt_6_0); // DODAJ TO
 
-    // ZMIENNE O POPRAWNYCH ROZMIARACH (zgodnie z tabelą)
     quint8 stx = 0;
-    quint8 typ = 0;
-    quint16 rozmiar = 0;
-
-    // 1. Odczytujemy bajt po bajcie zgodnie ze strukturą
     in >> stx;
+    if (stx != 0xAA) return;
 
-    // Sprawdzamy czy to nasza ramka
-    if (stx != 0xAA) {
-        qDebug() << "[SERWER] Odrzucono ramkę: Błędny STX!";
-        return;
-    }
-
-    // 2. Odczytujemy typ (1 bajt) i rozmiar (2 bajty)
+    quint8 typ;
+    quint16 rozmiar;
     in >> typ >> rozmiar;
 
-    // 3. Wycinamy właściwe dane (payload)
-    // Nagłówek (STX + Typ + Rozmiar) zajmuje 1 + 1 + 2 = 4 bajty
     QByteArray payload = data.mid(4, rozmiar);
-
-    // Pobieramy numer klienta (jeśli go przechowujesz w mapie/liście)
-    int numCli = m_clients.indexOf(socket);
-
-    // Emitujemy sygnał z poprawnym typem (teraz 'typ' będzie wynosił 1)
-    emit nowaRamkaOd(typ, payload, numCli);
+    emit nowaRamkaOd(typ, payload, m_clients.indexOf(socket));
 }
