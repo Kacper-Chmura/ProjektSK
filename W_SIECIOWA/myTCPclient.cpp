@@ -42,15 +42,19 @@ void MyTCPClient::slot_connected() {
 void MyTCPClient::slot_readyRead() {
     QByteArray data = m_socket.readAll();
     QDataStream in(&data, QIODevice::ReadOnly);
+    in.setVersion(QDataStream::Qt_6_0); // DODAJ TĘ LINIĘ
 
     quint8 stx, typ;
     quint16 rozmiar;
 
     in >> stx;
-    if (stx != 0xAA) return; // Odrzucenie nieprawidłowej ramki
+    if (stx != 0xAA) return;
 
     in >> typ >> rozmiar;
-    QByteArray payload = data.mid(4, rozmiar);
 
+    // Zabezpieczenie przed niepełną ramką (fragmentacja TCP)
+    if (data.size() < (4 + rozmiar)) return;
+
+    QByteArray payload = data.mid(4, rozmiar);
     emit nowaRamka(typ, payload);
 }

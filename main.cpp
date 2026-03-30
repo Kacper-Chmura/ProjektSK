@@ -140,8 +140,6 @@ int main(int argc, char *argv[])
         });
 
         QObject::connect(server, &MyTCPServer::nowaRamkaOd, [server](int typ, QByteArray payload, int numCli){
-            std::cout << "[SERWER] Otrzymano ramke typu: " << typ << " od klienta nr: " << numCli << std::endl;
-
             if (typ == 1) {
                 RegulatorPID odebranyPid(0.0);
                 quint32 czas = deserializePID(payload, odebranyPid);
