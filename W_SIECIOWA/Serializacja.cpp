@@ -48,6 +48,7 @@ QByteArray serializeARX(const ModelARX& arx, quint32 timestamp) {
 
 quint32 deserializeARX(QByteArray& buf, ModelARX& arx) {
     QDataStream in(&buf, QIODevice::ReadOnly);
+    in.setVersion(QDataStream::Qt_6_0);
 
     quint32 timestamp;
     QVector<double> qA, qB;
@@ -57,12 +58,29 @@ quint32 deserializeARX(QByteArray& buf, ModelARX& arx) {
     double umin, umax, ymin, ymax;
 
     in >> timestamp >> qA >> qB >> k >> pozsz >> ogr >> umin >> umax >> ymin >> ymax;
+    std::cout << "DEBUG: Rozmiar qA = " << qA.size() << " Rozmiar qB = " << qB.size() << std::endl;
+    // RĘCZNA I BEZPIECZNA KONWERSJA NA std::vector
+    std::vector<double> stdA, stdB;
 
-    std::vector<double> sA(qA.begin(), qA.end());
-    std::vector<double> sB(qB.begin(), qB.end());
+    // Bezpieczne przepisywanie A
+    if (!qA.isEmpty() && qA.size() < 1000) { // Zabezpieczenie przed "śmieciami"
+        stdA.resize(qA.size());
+        for(int i = 0; i < qA.size(); ++i) {
+            stdA[i] = qA.at(i);
+        }
+    }
 
-    arx.setA(sA);
-    arx.setB(sB);
+    // Bezpieczne przepisywanie B
+    if (!qB.isEmpty() && qB.size() < 1000) {
+        stdB.resize(qB.size());
+        for(int i = 0; i < qB.size(); ++i) {
+            stdB[i] = qB.at(i);
+        }
+    }
+    // PRZYPISANIE DO OBIEKTU
+    arx.setA(stdA);
+    arx.setB(stdB);
+
     arx.setk(k);
     arx.setpozsz(pozsz);
     arx.setOgraniczenia(ogr);
