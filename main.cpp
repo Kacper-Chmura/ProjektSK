@@ -8,7 +8,7 @@
 #include <vector>
 #include <cmath>
 #include <iomanip>
-
+#include <windows.h>
 #include "ARX.h"
 #include "Reg_PID.h"
 #include "GeneratorSygnalu.h"
@@ -104,6 +104,8 @@ void wykonaj_moje_testy() {
 
 int main(int argc, char *argv[])
 {
+    SetConsoleOutputCP(65001);
+    SetConsoleCP(65001);
     QApplication a(argc, argv);
 
     QCommandLineParser parser;
@@ -141,64 +143,83 @@ int main(int argc, char *argv[])
         });
 
         QObject::connect(server, &MyTCPServer::nowaRamkaOd, [](int typ, QByteArray payload, int numCli){
-            std::cout << "[SERWER] Otrzymano ramke typu: " << typ << " od klienta nr: " << numCli << std::endl;
+            std::cout << "\n------------------------------------------" << std::endl;
+            std::cout << "[SERWER] Odebrano dane od klienta nr: " << numCli << std::endl;
 
-            if (typ == 1) { // Obsługa PID
+            if (typ == 1) { // --- OBSŁUGA PID ---
                 RegulatorPID odebranyPid(0.0);
                 quint32 czas = deserializePID(payload, odebranyPid);
-                std::cout << "[SERWER] Rozkodowano PID. Kp = " << odebranyPid.getKp()
-                          << " | Czas nadania: " << czas << std::endl;
-                // Serwer tylko odczytuje - nie wysyła odpowiedzi
+
+                std::cout << ">>> TYP: Regulator PID" << std::endl;
+                std::cout << "  - Kp:           " << odebranyPid.getKp() << std::endl;
+                std::cout << "  - Ti:           " << odebranyPid.getTi() << std::endl;
+                std::cout << "  - Td:           " << odebranyPid.getTd() << std::endl;
+                std::cout << "  - Tp:           " << odebranyPid.getTp() << std::endl;
+                std::cout << "  - Umin:         " << odebranyPid.getUMin() << std::endl;
+                std::cout << "  - Umax:         " << odebranyPid.getUMax() << std::endl;
+                //std::cout << "  - Licz Calke:   " << (odebranyPid.getLiczCalk() ? "TAK" : "NIE") << std::endl;
             }
-            else if (typ == 2) { // Obsługa ARX
+            else if (typ == 2) { // --- OBSŁUGA ARX ---
                 ModelARX odebranyArx({0}, {0}, 1, 0);
                 quint32 czas = deserializeARX(payload, odebranyArx);
-                double b0 = odebranyArx.getB().empty() ? 0.0 : odebranyArx.getB()[0];
-                std::cout << "[SERWER] Rozkodowano ARX. B[0] = " << b0
-                          << " | Czas nadania: " << czas << std::endl;
+
+                std::cout << ">>> TYP: Model ARX" << std::endl;
+
+                // Wypisanie wektora A
+                std::cout << "  - Wielomian A:  [ ";
+                for(double a_val : odebranyArx.getA()) std::cout << a_val << " ";
+                std::cout << "]" << std::endl;
+
+                // Wypisanie wektora B
+                std::cout << "  - Wielomian B:  [ ";
+                for(double b_val : odebranyArx.getB()) std::cout << b_val << " ";
+                std::cout << "]" << std::endl;
+
+                std::cout << "  - Opóźnienie k: " << odebranyArx.getk() << std::endl;
+                std::cout << "  - Szum: " << odebranyArx.getpozsz() << std::endl;
+                std::cout << "  - Ograniczenia: " << (odebranyArx.ograniczenia() ? "AKTYWNE" : "WYŁĄCZONE") << std::endl;
+
+                if (odebranyArx.ograniczenia()) {
+                    std::cout << "    * Sterowanie: [" << odebranyArx.getUMin() << " , " << odebranyArx.getUMax() << "]" << std::endl;
+                    std::cout << "    * Wyjście:    [" << odebranyArx.getYMin() << " , " << odebranyArx.getYMax() << "]" << std::endl;
+                }
             }
+            std::cout << "------------------------------------------" << std::endl;
         });
 
         return a.exec();
     }
 
-    // --- SEKCJA KLIENTA ---
     if (parser.isSet("klient")) {
         std::cout << "--- TRYB KONSOLOWY: KLIENT ---" << std::endl;
+
+        // Dynamiczne pobieranie adresu IP od użytkownika
+        std::string ipInput;
+        std::cout << "Wpisz adres IP serwera: ";
+        std::cin >> ipInput;
+        QString qIp = QString::fromStdString(ipInput);
+
         MyTCPClient* client = new MyTCPClient(&a);
+        std::cout << "[KLIENT] Łączenie z adresem " << ipInput << "..." << std::endl;
+        client->connectTo(qIp, 12345);
 
-        std::cout << "[KLIENT] Laczenie z 127.0.0.1:12345..." << std::endl;
-        client->connectTo("127.0.0.1", 12345);
-
-        // Połączono oba wymagania w jeden slot
         QObject::connect(client, &MyTCPClient::connected, [client](){
-            std::cout << "[KLIENT] Polaczono!" << std::endl;
-            std::cout << "\n--- WYBOR TRANSFERU ---" << std::endl;
-            std::cout << "1. Wyslij obiekt PID" << std::endl;
-            std::cout << "2. Wyslij obiekt ARX" << std::endl;
-            std::cout << "Wybor: ";
+            std::cout << "[KLIENT] Połączono z serwerem!" << std::endl;
+            std::cout << "\nWYBIERZ OBIEKT DO WYSŁANIA:\n1. Obiekt PID\n2. Obiekt ARX\nWybór: ";
 
             int wybor;
-            if (!(std::cin >> wybor)) {
-                std::cin.clear();
-                std::cin.ignore(1000, '\n');
-                return;
-            }
+            std::cin >> wybor;
 
             if (wybor == 1) {
-                RegulatorPID pid(12.34, 5.0, 0.1, 1.0, -100, 100);
-                QByteArray payload = serializePID(pid, 555);
-                client->wyslijRamke(1, payload); // Typ 1
-                std::cout << "[KLIENT] Wyslano PID." << std::endl;
-            }
-            else if (wybor == 2) {
-                ModelARX arx({-0.5, 0.2}, {1.0, 0.5}, 1, 0);
-                QByteArray payload = serializeARX(arx, 777);
-                client->wyslijRamke(2, payload); // Typ 2
-                std::cout << "[KLIENT] Wyslano ARX." << std::endl;
-            }
-            else {
-                std::cout << "[KLIENT] Nieprawidlowy wybor." << std::endl;
+                RegulatorPID pid(5.0, 2.0, 0.5, 0.1, -10.0, 10.0);
+                client->wyslijRamke(1, serializePID(pid, 123));
+                std::cout << "[KLIENT] Wysłano strukturę PID." << std::endl;
+            } else if (wybor == 2) {
+                ModelARX arx({-0.6, 0.1}, {1.2, 0.4}, 2, 0.05);
+                client->wyslijRamke(2, serializeARX(arx, 456));
+                std::cout << "[KLIENT] Wysłano strukturę ARX." << std::endl;
+            } else {
+                std::cout << "[KLIENT] Błędny wybór." << std::endl;
             }
         });
 
