@@ -22,28 +22,21 @@ int MyTCPServer::getNumClients() {
     return m_clients.length();
 }
 
+// myTCPserver.cpp / myTCPclient.cpp
 void MyTCPServer::wyslijRamke(quint8 typ, const QByteArray& payload, int numCli) {
-    if(numCli < 0 || numCli >= m_clients.length()) return;
-
     QByteArray frame;
     QDataStream out(&frame, QIODevice::WriteOnly);
-    // KLUCZOWE: Wersja musi być identyczna wszędzie!
     out.setVersion(QDataStream::Qt_6_0);
 
-    // 1. Nagłówek (4 bajty)
-    out << (quint8)0xAA;
-    out << typ;
-    out << (quint16)payload.size();
+    out << (quint8)0xAA << typ << (quint16)payload.size();
+    out.writeRawData(payload.constData(), payload.size()); // Kluczowe dla ARX
 
-    // 2. Dane - informujemy strumień o zapisie surowych bajtów
-    out.writeRawData(payload.constData(), payload.size());
-
-    // 3. Suma kontrolna - teraz zostanie dopisana PO danych
     quint16 crc = 0;
     for (char b : frame) crc += (quint8)b;
     out << crc;
 
-    m_clients.at(numCli)->write(frame);
+    if(numCli >= 0 && numCli < m_clients.length())
+        m_clients.at(numCli)->write(frame);
 }
 int MyTCPServer::getClinetID() {
     QTcpSocket *client = static_cast<QTcpSocket*>(QObject::sender());

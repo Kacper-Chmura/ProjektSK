@@ -127,6 +127,7 @@ int main(int argc, char *argv[])
 
         return 0;
     }
+    // --- SEKCJA SERWERA ---
     if (parser.isSet("serwer")) {
         std::cout << "--- TRYB KONSOLOWY: SERWER ---" << std::endl;
         MyTCPServer* server = new MyTCPServer(&a);
@@ -139,22 +140,29 @@ int main(int argc, char *argv[])
             std::cout << "[SERWER] Podlaczyl sie klient z IP: " << adr.toStdString() << std::endl;
         });
 
-        QObject::connect(server, &MyTCPServer::nowaRamkaOd, [server](int typ, QByteArray payload, int numCli){
-            if (typ == 1) {
+        QObject::connect(server, &MyTCPServer::nowaRamkaOd, [](int typ, QByteArray payload, int numCli){
+            std::cout << "[SERWER] Otrzymano ramke typu: " << typ << " od klienta nr: " << numCli << std::endl;
+
+            if (typ == 1) { // Obsługa PID
                 RegulatorPID odebranyPid(0.0);
                 quint32 czas = deserializePID(payload, odebranyPid);
-                std::cout << "[SERWER] Rozkodowano PID. Kp = " << odebranyPid.getKp() << " | Czas: " << czas << std::endl;
-
-                std::cout << "[SERWER] Odsylam obiekt ARX jako odpowiedz..." << std::endl;
-                ModelARX testowyArx({-0.5}, {2.5}, 1, 0);
-                QByteArray payloadArx = serializeARX(testowyArx, 999);
-                server->wyslijRamke(2, payloadArx, numCli);
+                std::cout << "[SERWER] Rozkodowano PID. Kp = " << odebranyPid.getKp()
+                          << " | Czas nadania: " << czas << std::endl;
+                // Serwer tylko odczytuje - nie wysyła odpowiedzi
+            }
+            else if (typ == 2) { // Obsługa ARX
+                ModelARX odebranyArx({0}, {0}, 1, 0);
+                quint32 czas = deserializeARX(payload, odebranyArx);
+                double b0 = odebranyArx.getB().empty() ? 0.0 : odebranyArx.getB()[0];
+                std::cout << "[SERWER] Rozkodowano ARX. B[0] = " << b0
+                          << " | Czas nadania: " << czas << std::endl;
             }
         });
 
         return a.exec();
     }
 
+    // --- SEKCJA KLIENTA ---
     if (parser.isSet("klient")) {
         std::cout << "--- TRYB KONSOLOWY: KLIENT ---" << std::endl;
         MyTCPClient* client = new MyTCPClient(&a);
@@ -162,19 +170,35 @@ int main(int argc, char *argv[])
         std::cout << "[KLIENT] Laczenie z 127.0.0.1:12345..." << std::endl;
         client->connectTo("127.0.0.1", 12345);
 
+        // Połączono oba wymagania w jeden slot
         QObject::connect(client, &MyTCPClient::connected, [client](){
-            std::cout << "[KLIENT] Polaczono! Wysylam obiekt PID." << std::endl;
-            RegulatorPID testowyPid(12.34, 5.0, 0.1, 1.0, -100, 100);
-            QByteArray payload = serializePID(testowyPid, 555);
-            client->wyslijRamke(1, payload);
-        });
+            std::cout << "[KLIENT] Polaczono!" << std::endl;
+            std::cout << "\n--- WYBOR TRANSFERU ---" << std::endl;
+            std::cout << "1. Wyslij obiekt PID" << std::endl;
+            std::cout << "2. Wyslij obiekt ARX" << std::endl;
+            std::cout << "Wybor: ";
 
-        QObject::connect(client, &MyTCPClient::nowaRamka, [](int typ, QByteArray payload){
-            std::cout << "[KLIENT] Otrzymano odpowiedz z Serwera. Typ: " << typ << std::endl;
-            if (typ == 2) {
-                ModelARX odebranyArx({0}, {0}, 1, 0);
-                quint32 czas = deserializeARX(payload, odebranyArx);
-                std::cout << "[KLIENT] Rozkodowano ARX. Wspolczynnik B[0] = " << odebranyArx.getB()[0] << " | Czas nadania: " << czas << std::endl;
+            int wybor;
+            if (!(std::cin >> wybor)) {
+                std::cin.clear();
+                std::cin.ignore(1000, '\n');
+                return;
+            }
+
+            if (wybor == 1) {
+                RegulatorPID pid(12.34, 5.0, 0.1, 1.0, -100, 100);
+                QByteArray payload = serializePID(pid, 555);
+                client->wyslijRamke(1, payload); // Typ 1
+                std::cout << "[KLIENT] Wyslano PID." << std::endl;
+            }
+            else if (wybor == 2) {
+                ModelARX arx({-0.5, 0.2}, {1.0, 0.5}, 1, 0);
+                QByteArray payload = serializeARX(arx, 777);
+                client->wyslijRamke(2, payload); // Typ 2
+                std::cout << "[KLIENT] Wyslano ARX." << std::endl;
+            }
+            else {
+                std::cout << "[KLIENT] Nieprawidlowy wybor." << std::endl;
             }
         });
 
