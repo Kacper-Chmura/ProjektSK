@@ -128,31 +128,29 @@ int main(int argc, char *argv[])
         return 0;
     }
     if (parser.isSet("serwer")) {
-        qDebug() << "--- TRYB KONSOLOWY: SERWER ---";
+        std::cout << "--- TRYB KONSOLOWY: SERWER ---" << std::endl;
         MyTCPServer* server = new MyTCPServer(&a);
 
         if (server->startListening(12345)) {
-            qDebug() << "[SERWER] Czekam na porcie 12345...";
+            std::cout << "[SERWER] Czekam na porcie 12345..." << std::endl;
         }
 
         QObject::connect(server, &MyTCPServer::newClientConnected, [](QString adr){
-            qDebug() << "[SERWER] Podlaczyl sie klient:" << adr;
+            std::cout << "[SERWER] Podlaczyl sie klient z IP: " << adr.toStdString() << std::endl;
         });
 
         QObject::connect(server, &MyTCPServer::nowaRamkaOd, [server](int typ, QByteArray payload, int numCli){
-            qDebug() << "[SERWER] Otrzymano ramke typu:" << typ << "od klienta nr:" << numCli;
+            std::cout << "[SERWER] Otrzymano ramke typu: " << typ << " od klienta nr: " << numCli << std::endl;
 
             if (typ == 1) {
                 RegulatorPID odebranyPid(0.0);
                 quint32 czas = deserializePID(payload, odebranyPid);
-                qDebug() << "[SERWER] Rozkodowano PID. Kp =" << odebranyPid.getKp() << "| Czas:" << czas;
+                std::cout << "[SERWER] Rozkodowano PID. Kp = " << odebranyPid.getKp() << " | Czas: " << czas << std::endl;
 
-                // --- NOWE: Odsyłanie ARX do klienta ---
-                qDebug() << "[SERWER] Odsylam obiekt ARX jako odpowiedz...";
+                std::cout << "[SERWER] Odsylam obiekt ARX jako odpowiedz..." << std::endl;
                 ModelARX testowyArx({-0.5}, {2.5}, 1, 0);
-                QByteArray payloadArx = serializeARX(testowyArx, 999); // 999 to testowy timestamp
-
-                server->wyslijRamke(2, payloadArx, numCli); // Typ 2 = ARX
+                QByteArray payloadArx = serializeARX(testowyArx, 999);
+                server->wyslijRamke(2, payloadArx, numCli);
             }
         });
 
@@ -160,20 +158,26 @@ int main(int argc, char *argv[])
     }
 
     if (parser.isSet("klient")) {
-        qDebug() << "--- TRYB KONSOLOWY: KLIENT ---";
+        std::cout << "--- TRYB KONSOLOWY: KLIENT ---" << std::endl;
         MyTCPClient* client = new MyTCPClient(&a);
 
-        qDebug() << "[KLIENT] Laczenie z 127.0.0.1:12345...";
+        std::cout << "[KLIENT] Laczenie z 127.0.0.1:12345..." << std::endl;
         client->connectTo("127.0.0.1", 12345);
 
         QObject::connect(client, &MyTCPClient::connected, [client](){
-            qDebug() << "[KLIENT] Polaczono. Wysylam obiekt PID.";
+            std::cout << "[KLIENT] Polaczono! Wysylam obiekt PID." << std::endl;
             RegulatorPID testowyPid(12.34, 5.0, 0.1, 1.0, -100, 100);
+            QByteArray payload = serializePID(testowyPid, 555);
+            client->wyslijRamke(1, payload);
+        });
 
-            quint32 aktualnyCzas = 555; // Np. z managera symulacji
-            QByteArray payload = serializePID(testowyPid, aktualnyCzas);
-
-            client->wyslijRamke(1, payload); // 1 = Typ wiadomości (PID)
+        QObject::connect(client, &MyTCPClient::nowaRamka, [](int typ, QByteArray payload){
+            std::cout << "[KLIENT] Otrzymano odpowiedz z Serwera. Typ: " << typ << std::endl;
+            if (typ == 2) {
+                ModelARX odebranyArx({0}, {0}, 1, 0);
+                quint32 czas = deserializeARX(payload, odebranyArx);
+                std::cout << "[KLIENT] Rozkodowano ARX. Wspolczynnik B[0] = " << odebranyArx.getB()[0] << " | Czas nadania: " << czas << std::endl;
+            }
         });
 
         return a.exec();

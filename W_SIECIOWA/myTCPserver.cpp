@@ -63,14 +63,36 @@ void MyTCPServer::slot_client_disconnetcted() {
 }
 
 void MyTCPServer::slot_newMsg() {
-    int idx = getClinetID();
-    QByteArray data = m_clients.at(idx)->readAll();
+    QTcpSocket* socket = qobject_cast<QTcpSocket*>(sender());
+    if (!socket) return;
 
+    QByteArray data = socket->readAll();
     QDataStream in(&data, QIODevice::ReadOnly);
-    int typ, rozmiar, timestamp;
-    in >> typ >> rozmiar >> timestamp;
 
-    QByteArray payload = data.mid(3 * sizeof(int), rozmiar);
+    // ZMIENNE O POPRAWNYCH ROZMIARACH (zgodnie z tabelą)
+    quint8 stx = 0;
+    quint8 typ = 0;
+    quint16 rozmiar = 0;
 
-    emit nowaRamkaOd(typ, payload, idx);
+    // 1. Odczytujemy bajt po bajcie zgodnie ze strukturą
+    in >> stx;
+
+    // Sprawdzamy czy to nasza ramka
+    if (stx != 0xAA) {
+        qDebug() << "[SERWER] Odrzucono ramkę: Błędny STX!";
+        return;
+    }
+
+    // 2. Odczytujemy typ (1 bajt) i rozmiar (2 bajty)
+    in >> typ >> rozmiar;
+
+    // 3. Wycinamy właściwe dane (payload)
+    // Nagłówek (STX + Typ + Rozmiar) zajmuje 1 + 1 + 2 = 4 bajty
+    QByteArray payload = data.mid(4, rozmiar);
+
+    // Pobieramy numer klienta (jeśli go przechowujesz w mapie/liście)
+    int numCli = m_clients.indexOf(socket);
+
+    // Emitujemy sygnał z poprawnym typem (teraz 'typ' będzie wynosił 1)
+    emit nowaRamkaOd(typ, payload, numCli);
 }
