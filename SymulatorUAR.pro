@@ -15,6 +15,7 @@ SOURCES += \
     Reg_PID.cpp \
     SymulatorUAR.cpp \
     Testy_UAR.cpp \
+    W_SIECIOWA/Serializacja.cpp \
     W_SIECIOWA/clientMW.cpp \
     W_SIECIOWA/myTCPclient.cpp \
     W_SIECIOWA/myTCPserver.cpp \
@@ -32,6 +33,7 @@ HEADERS += \
     Reg_PID.h \
     SymulatorUAR.h \
     Testy_UAR.h \
+    W_SIECIOWA/Serializacja.h \
     W_SIECIOWA/clientMW.h \
     W_SIECIOWA/myTCPclient.h \
     W_SIECIOWA/myTCPserver.h \

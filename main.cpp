@@ -1,3 +1,4 @@
+#include "W_SIECIOWA/Serializacja.h"
 #include "W_SIECIOWA/myTCPclient.h"
 #include "W_SIECIOWA/myTCPserver.h"
 #include "mainwindow.h"
@@ -138,8 +139,21 @@ int main(int argc, char *argv[])
             qDebug() << "[SERWER] Podlaczyl sie klient:" << adr;
         });
 
-        QObject::connect(server, &MyTCPServer::nowaRamkaOd, [](int typ, QByteArray payload, int numCli){
-            qDebug() << "[SERWER] Odebrano ramke. Typ:" << typ << " Tresc:" << payload.data();
+        QObject::connect(server, &MyTCPServer::nowaRamkaOd, [server](int typ, QByteArray payload, int numCli){
+            qDebug() << "[SERWER] Otrzymano ramke typu:" << typ << "od klienta nr:" << numCli;
+
+            if (typ == 1) {
+                RegulatorPID odebranyPid(0.0);
+                quint32 czas = deserializePID(payload, odebranyPid);
+                qDebug() << "[SERWER] Rozkodowano PID. Kp =" << odebranyPid.getKp() << "| Czas:" << czas;
+
+                // --- NOWE: Odsyłanie ARX do klienta ---
+                qDebug() << "[SERWER] Odsylam obiekt ARX jako odpowiedz...";
+                ModelARX testowyArx({-0.5}, {2.5}, 1, 0);
+                QByteArray payloadArx = serializeARX(testowyArx, 999); // 999 to testowy timestamp
+
+                server->wyslijRamke(2, payloadArx, numCli); // Typ 2 = ARX
+            }
         });
 
         return a.exec();
@@ -153,9 +167,13 @@ int main(int argc, char *argv[])
         client->connectTo("127.0.0.1", 12345);
 
         QObject::connect(client, &MyTCPClient::connected, [client](){
-            qDebug() << "[KLIENT] Polaczono! Wysylam tekst testowy.";
-            QByteArray testPayload = "HELLO SERVER!";
-            client->wyslijRamke(99, 0, testPayload);
+            qDebug() << "[KLIENT] Polaczono. Wysylam obiekt PID.";
+            RegulatorPID testowyPid(12.34, 5.0, 0.1, 1.0, -100, 100);
+
+            quint32 aktualnyCzas = 555; // Np. z managera symulacji
+            QByteArray payload = serializePID(testowyPid, aktualnyCzas);
+
+            client->wyslijRamke(1, payload); // 1 = Typ wiadomości (PID)
         });
 
         return a.exec();

@@ -21,18 +21,22 @@ int MyTCPServer::getNumClients() {
     return m_clients.length();
 }
 
-void MyTCPServer::wyslijRamke(int typ, int timestamp, const QByteArray& payload, int numCli) {
+void MyTCPServer::wyslijRamke(quint8 typ, const QByteArray& payload, int numCli) {
     if(numCli >= m_clients.length()) return;
 
     QByteArray frame;
     QDataStream out(&frame, QIODevice::WriteOnly);
 
-    out << typ << (int)payload.size() << timestamp;
-    frame.append(payload);
+    // Zgodnie z wytycznymi z obrazka:
+    out << (quint8)0xAA;               // STX (1 bajt)
+    out << typ;                        // Typ (1 bajt)
+    out << (quint16)payload.size();    // Długość (2 bajty)
 
-    int crc = 0;
-    for(char b : frame) crc ^= b;
-    out << crc;
+    frame.append(payload);             // Dane (zawierają już timestamp z Serializacja.h)
+
+    quint16 crc = 0;
+    for (char b : frame) crc += (quint8)b;
+    out << crc;                        // CRC (2 bajty)
 
     m_clients.at(numCli)->write(frame);
 }

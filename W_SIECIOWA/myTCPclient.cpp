@@ -18,16 +18,19 @@ void MyTCPClient::disconnectFrom() {
     m_socket.close();
 }
 
-void MyTCPClient::wyslijRamke(int typ, int timestamp, const QByteArray& payload) {
+void MyTCPClient::wyslijRamke(quint8 typ, const QByteArray& payload) {
     QByteArray frame;
     QDataStream out(&frame, QIODevice::WriteOnly);
 
-    out << typ << (int)payload.size() << timestamp;
-    frame.append(payload);
+    out << (quint8)0xAA;               // STX
+    out << typ;                        // Typ wiadomości
+    out << (quint16)payload.size();    // Długość danych
 
-    int crc = 0;
-    for(char b : frame) crc ^= b;
-    out << crc;
+    frame.append(payload);             // Dane
+
+    quint16 crc = 0;
+    for (char b : frame) crc += (quint8)b;
+    out << crc;                        // CRC
 
     m_socket.write(frame);
 }
@@ -40,10 +43,14 @@ void MyTCPClient::slot_readyRead() {
     QByteArray data = m_socket.readAll();
     QDataStream in(&data, QIODevice::ReadOnly);
 
-    int typ, rozmiar, timestamp;
-    in >> typ >> rozmiar >> timestamp;
+    quint8 stx, typ;
+    quint16 rozmiar;
 
-    QByteArray payload = data.mid(3 * sizeof(int), rozmiar);
+    in >> stx;
+    if (stx != 0xAA) return; // Odrzucenie nieprawidłowej ramki
+
+    in >> typ >> rozmiar;
+    QByteArray payload = data.mid(4, rozmiar);
 
     emit nowaRamka(typ, payload);
 }
