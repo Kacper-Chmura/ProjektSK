@@ -1,13 +1,13 @@
 #include "Serializacja.h"
 #include <QDataStream>
-#include <QIODevice>  // DODANO: Rozwiązuje błąd "Incomplete type 'QIODevice'"
+#include <QIODevice>
 #include <QVector>
 #include <vector>
 
 QByteArray serializePID(const RegulatorPID& pid, quint32 timestamp) {
     QByteArray buf;
     QDataStream out(&buf, QIODevice::WriteOnly);
-    out.setVersion(QDataStream::Qt_6_0); // Wymuszamy wersję dla spójności
+    out.setVersion(QDataStream::Qt_6_0);
 
     out << timestamp
         << pid.getKp() << pid.getTi() << pid.getTd() << pid.getTp()
@@ -38,7 +38,6 @@ QByteArray serializeARX(const ModelARX& arx, quint32 timestamp) {
     QDataStream out(&buf, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_6_0);
 
-    // Ręczne kopiowanie std::vector -> QVector (rozwiązuje błąd fromStdVector)
     QVector<double> qA;
     for(double d : arx.getA()) qA.append(d);
 
@@ -66,7 +65,6 @@ quint32 deserializeARX(QByteArray& buf, ModelARX& arx) {
 
     in >> timestamp >> qA >> qB >> k >> pozsz >> ogr >> umin >> umax >> ymin >> ymax;
 
-    // Ręczne kopiowanie QVector -> std::vector (rozwiązuje błąd toStdVector)
     std::vector<double> stdA;
     stdA.reserve(qA.size());
     for(double d : qA) stdA.push_back(d);
