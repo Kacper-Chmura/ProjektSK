@@ -34,10 +34,10 @@ void MyTCPServer::wyslijRamke(quint8 typ, const QByteArray& payload, int numCli)
     out << typ;                        // Typ
     out << (quint16)payload.size();    // Długość
 
-    // KLUCZOWE: writeRawData przesuwa wskaźnik strumienia
+    // writeRawData przesuwa wskaźnik strumienia
     out.writeRawData(payload.constData(), payload.size());
 
-    // Teraz CRC zostanie dopisane NA KOŃCU, a nie na początku payloadu
+    // Teraz CRC zostanie dopisane na końcu a nie na początku payloadu
     quint16 crc = 0;
     for (char b : frame) crc += (quint8)b;
     out << crc;
@@ -70,7 +70,7 @@ void MyTCPServer::slot_newMsg() {
 
     QByteArray data = socket->readAll();
     QDataStream in(&data, QIODevice::ReadOnly);
-    in.setVersion(QDataStream::Qt_6_0); // DODAJ TO
+    in.setVersion(QDataStream::Qt_6_0);
 
     quint8 stx = 0;
     in >> stx;

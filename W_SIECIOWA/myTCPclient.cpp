@@ -42,7 +42,7 @@ void MyTCPClient::slot_connected() {
 void MyTCPClient::slot_readyRead() {
     QByteArray data = m_socket.readAll();
     QDataStream in(&data, QIODevice::ReadOnly);
-    in.setVersion(QDataStream::Qt_6_0); // DODAJ TĘ LINIĘ
+    in.setVersion(QDataStream::Qt_6_0);
 
     quint8 stx, typ;
     quint16 rozmiar;
