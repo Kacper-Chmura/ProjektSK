@@ -1,7 +1,6 @@
 #include "myTCPclient.h"
 #include <QDataStream>
 
-// Rozmiar nagłówka ramki: STX(1) + typ(1) + rozmiar(2) = 4 bajty
 static const int NAGLOWEK_ROZMIAR = 4;
 
 MyTCPClient::MyTCPClient(QObject *parent) : QObject(parent), m_socket(this)
@@ -26,13 +25,12 @@ void MyTCPClient::wyslijRamke(quint8 typ, const QByteArray& payload) {
     QDataStream out(&frame, QIODevice::WriteOnly);
     out.setByteOrder(QDataStream::BigEndian);
 
-    out << (quint8)0xAA;                    // STX
-    out << typ;                             // Typ wiadomości
-    out << (quint16)payload.size();         // Długość danych
+    out << (quint8)0xAA;
+    out << typ;
+    out << (quint16)payload.size();
 
-    frame.append(payload);                  // Dane
+    frame.append(payload);
 
-    // CRC – suma wszystkich bajtów ramki (bez samego CRC)
     quint16 crc = 0;
     for (unsigned char b : frame) crc += b;
     QDataStream crcOut(&frame, QIODevice::Append);
@@ -46,24 +44,17 @@ void MyTCPClient::slot_connected() {
     emit connected(m_ipAddress, m_port);
 }
 
-// ---------------------------------------------------------------------------
-//  Odbiór z buforowaniem – poprawna obsługa fragmentacji TCP
-// ---------------------------------------------------------------------------
 void MyTCPClient::slot_readyRead() {
     m_buforOdbioru.append(m_socket.readAll());
     przetorzBufor();
 }
 
 void MyTCPClient::przetorzBufor() {
-    // Pętla: przetwarzamy tyle pełnych ramek ile jest w buforze
     while (true) {
-        // Za mało danych nawet na nagłówek
         if (m_buforOdbioru.size() < NAGLOWEK_ROZMIAR)
             break;
 
-        // Sprawdź STX
         if ((quint8)m_buforOdbioru[0] != 0xAA) {
-            // Zsynchronizuj – szukaj następnego 0xAA
             int idx = m_buforOdbioru.indexOf((char)0xAA, 1);
             if (idx < 0) { m_buforOdbioru.clear(); break; }
             m_buforOdbioru.remove(0, idx);
@@ -73,13 +64,11 @@ void MyTCPClient::przetorzBufor() {
         quint8  typ     = (quint8)m_buforOdbioru[1];
         quint16 rozmiar = ((quint8)m_buforOdbioru[2] << 8) | (quint8)m_buforOdbioru[3];
 
-        int calkowitaRozmiar = NAGLOWEK_ROZMIAR + rozmiar + 2; // +2 na CRC
+        int calkowitaRozmiar = NAGLOWEK_ROZMIAR + rozmiar + 2;
 
-        // Jeszcze nie mamy całej ramki
         if (m_buforOdbioru.size() < calkowitaRozmiar)
             break;
 
-        // Weryfikacja CRC
         quint16 crcObliczone = 0;
         for (int i = 0; i < NAGLOWEK_ROZMIAR + rozmiar; ++i)
             crcObliczone += (quint8)m_buforOdbioru[i];
@@ -91,7 +80,6 @@ void MyTCPClient::przetorzBufor() {
             QByteArray payload = m_buforOdbioru.mid(NAGLOWEK_ROZMIAR, rozmiar);
             emit nowaRamka(typ, payload);
         }
-        // (błąd CRC – ramkę odrzucamy, ale usuwamy ją z bufora)
 
         m_buforOdbioru.remove(0, calkowitaRozmiar);
     }

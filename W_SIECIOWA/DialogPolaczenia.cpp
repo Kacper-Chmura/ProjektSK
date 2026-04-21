@@ -19,7 +19,6 @@ DialogPolaczenia::~DialogPolaczenia()
 
 void DialogPolaczenia::on_radioSerwer_toggled(bool checked)
 {
-    // Adres IP jest potrzebny tylko po stronie klienta
     ui->labelIP->setEnabled(!checked);
     ui->editIP->setEnabled(!checked);
 }

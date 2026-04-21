@@ -15,7 +15,6 @@ bool MyTCPServer::startListening(int port) {
 }
 
 void MyTCPServer::stopListening() {
-    // Rozłącz wszystkich klientów przed zamknięciem
     for (QTcpSocket* s : m_clients) {
         s->disconnectFromHost();
         s->deleteLater();
@@ -59,7 +58,7 @@ int MyTCPServer::getClientID(QTcpSocket* socket) {
 void MyTCPServer::slot_new_client() {
     QTcpSocket *client = m_server.nextPendingConnection();
     m_clients.push_back(client);
-    m_bufory[client] = QByteArray();  // bufor dla nowego klienta
+    m_bufory[client] = QByteArray();
 
     connect(client, SIGNAL(disconnected()), this, SLOT(slot_client_disconnetcted()));
     connect(client, SIGNAL(readyRead()),    this, SLOT(slot_newMsg()));
@@ -77,9 +76,6 @@ void MyTCPServer::slot_client_disconnetcted() {
     emit clientDisconnetced(idx);
 }
 
-// ---------------------------------------------------------------------------
-//  Odbiór z buforowaniem – poprawna obsługa fragmentacji TCP
-// ---------------------------------------------------------------------------
 void MyTCPServer::slot_newMsg() {
     QTcpSocket* socket = qobject_cast<QTcpSocket*>(sender());
     if (!socket) return;
@@ -95,7 +91,6 @@ void MyTCPServer::przetorzBufor(QTcpSocket* socket) {
     while (true) {
         if (buf.size() < NAGLOWEK_ROZMIAR) break;
 
-        // Synchronizacja strumienia
         if ((quint8)buf[0] != 0xAA) {
             int idx = buf.indexOf((char)0xAA, 1);
             if (idx < 0) { buf.clear(); break; }
@@ -110,7 +105,6 @@ void MyTCPServer::przetorzBufor(QTcpSocket* socket) {
 
         if (buf.size() < calkowitaRozmiar) break;
 
-        // Weryfikacja CRC
         quint16 crcObliczone = 0;
         for (int i = 0; i < NAGLOWEK_ROZMIAR + rozmiar; ++i)
             crcObliczone += (quint8)buf[i];

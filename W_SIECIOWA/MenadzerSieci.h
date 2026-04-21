@@ -7,29 +7,20 @@
 
 class MenadzerSymulacji;
 
-// -------------------------------------------------------------------------
-//  Typy ramek protokołu
-// -------------------------------------------------------------------------
 enum class TypRamki : quint8 {
-    PID           = 0x01,   // konfiguracja regulatora PID
-    ARX           = 0x02,   // konfiguracja modelu ARX
-    Generator     = 0x03,   // konfiguracja generatora wartości zadanej
-    InfoPolaczenia = 0x04,  // informacje wymieniane przy nawiązaniu (IP, rola)
-    Potwierdzenie = 0x05,   // ACK – odebrano konfigurację
+    PID           = 0x01,
+    ARX           = 0x02,
+    Generator     = 0x03,
+    InfoPolaczenia = 0x04,
+    Potwierdzenie = 0x05,
 };
 
-// -------------------------------------------------------------------------
-//  Role instancji w trybie sieciowym
-// -------------------------------------------------------------------------
 enum class RolaSieciowa {
-    Brak,       // tryb stacjonarny
-    Regulator,  // zarządza generatorem, PID, taktowaniem – wysyła u
-    Obiekt,     // symuluje ARX – odbiera u, odsyła y
+    Brak,
+    Regulator,
+    Obiekt,
 };
 
-// -------------------------------------------------------------------------
-//  MenadzerSieci – warstwa sieciowa
-// -------------------------------------------------------------------------
 class MenadzerSieci : public QObject
 {
     Q_OBJECT
@@ -38,7 +29,6 @@ public:
     explicit MenadzerSieci(MenadzerSymulacji* manager, QObject* parent = nullptr);
     ~MenadzerSieci() override = default;
 
-    // ---- nawiązywanie / zrywanie połączenia ----
     bool startujSerwer(int port);
     void polaczJakoKlient(const QString& adres, int port);
     void rozlacz();
@@ -47,21 +37,19 @@ public:
     RolaSieciowa getRole() const { return _rola; }
     void setRole(RolaSieciowa r) { _rola = r; }
 
-    // ---- wysyłanie konfiguracji UAR ----
     void wyslijKonfiguracjePID();
     void wyslijKonfiguracjeARX();
     void wyslijKonfiguracjeGeneratora();
-    void wyslijPelnaKonfiguracje();  // PID + ARX + Generator
+    void wyslijPelnaKonfiguracje();
 
-    // ---- informacje o połączeniu ----
     QString getZdalneIP() const { return _zdalneIP; }
     int     getZdalnyPort() const { return _zdalnyPort; }
     bool    czyJestSerwerem() const { return _czyJestSerwer; }
 
 signals:
     void polaczonySygnal(QString zdalneIP, int zdalnyPort, bool jakoSerwer);
-    void rozlaczenieZewnetrzne();          // połączenie zerwane z zewnątrz
-    void konfiguracjaOdebrana(TypRamki typ); // sygnał po odebraniu i zastosowaniu konfigu
+    void rozlaczenieZewnetrzne();
+    void konfiguracjaOdebrana(TypRamki typ);
 
 private slots:
     void onKlientPolaczony(QString adres, int port);
@@ -87,6 +75,5 @@ private:
     int           _zdalnyPort   = 0;
     RolaSieciowa  _rola         = RolaSieciowa::Brak;
 
-    // bufor do obsługi fragmentacji TCP
     QByteArray _buforOdbioru;
 };

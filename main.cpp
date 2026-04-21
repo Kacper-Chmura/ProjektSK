@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 
         return 0;
     }
-    // --- SEKCJA SERWERA ---
+
     if (parser.isSet("serwer")) {
         std::cout << "--- TRYB KONSOLOWY: SERWER ---" << std::endl;
         MyTCPServer* server = new MyTCPServer(&a);
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
             std::cout << "\n------------------------------------------" << std::endl;
             std::cout << "[SERWER] Odebrano dane od klienta nr: " << numCli << std::endl;
 
-            if (typ == 1) { // --- OBSŁUGA PID ---
+            if (typ == 1) {
                 RegulatorPID odebranyPid(0.0);
                 quint32 czas = deserializePID(payload, odebranyPid);
 
@@ -157,20 +157,17 @@ int main(int argc, char *argv[])
                 std::cout << "  - Tp:           " << odebranyPid.getTp() << std::endl;
                 std::cout << "  - Umin:         " << odebranyPid.getUMin() << std::endl;
                 std::cout << "  - Umax:         " << odebranyPid.getUMax() << std::endl;
-                //std::cout << "  - Licz Calke:   " << (odebranyPid.getLiczCalk() ? "TAK" : "NIE") << std::endl;
             }
-            else if (typ == 2) { // --- OBSŁUGA ARX ---
+            else if (typ == 2) {
                 ModelARX odebranyArx({0}, {0}, 1, 0);
                 quint32 czas = deserializeARX(payload, odebranyArx);
 
                 std::cout << ">>> TYP: Model ARX" << std::endl;
 
-                // Wypisanie wektora A
                 std::cout << "  - Wielomian A:  [ ";
                 for(double a_val : odebranyArx.getA()) std::cout << a_val << " ";
                 std::cout << "]" << std::endl;
 
-                // Wypisanie wektora B
                 std::cout << "  - Wielomian B:  [ ";
                 for(double b_val : odebranyArx.getB()) std::cout << b_val << " ";
                 std::cout << "]" << std::endl;
@@ -193,7 +190,6 @@ int main(int argc, char *argv[])
     if (parser.isSet("klient")) {
         std::cout << "--- TRYB KONSOLOWY: KLIENT ---" << std::endl;
 
-        // Dynamiczne pobieranie adresu IP od użytkownika
         std::string ipInput;
         std::cout << "Wpisz adres IP serwera: ";
         std::cin >> ipInput;

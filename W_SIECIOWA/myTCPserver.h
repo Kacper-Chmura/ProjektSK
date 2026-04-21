@@ -39,7 +39,7 @@ private:
     int                m_port        = 12345;
     QTcpServer         m_server;
     QVector<QTcpSocket*>          m_clients;
-    QMap<QTcpSocket*, QByteArray> m_bufory;  // bufor odbioru per klient
+    QMap<QTcpSocket*, QByteArray> m_bufory;
 };
 
 #endif // MYTCPSERVER_H
