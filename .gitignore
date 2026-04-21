@@ -97,7 +97,6 @@ debug/
 *.o
 *.obj
 *.moc
-*.ui
 moc_*.cpp
 .qmake.cache
 .qmake.stash

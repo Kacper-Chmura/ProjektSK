@@ -1,14 +1,9 @@
 QT       += core gui printsupport widgets network
-#QT       += core gui widgets network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
 CONFIG += console
-
-# You can make your code fail to compile if it uses deprecated APIs.
-# In order to do so, uncomment the following line.
-#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
     ARX.cpp \
@@ -17,6 +12,8 @@ SOURCES += \
     Reg_PID.cpp \
     SymulatorUAR.cpp \
     Testy_UAR.cpp \
+    W_SIECIOWA/DialogPolaczenia.cpp \
+    W_SIECIOWA/MenadzerSieci.cpp \
     W_SIECIOWA/Serializacja.cpp \
     W_SIECIOWA/clientMW.cpp \
     W_SIECIOWA/myTCPclient.cpp \
@@ -26,7 +23,7 @@ SOURCES += \
     dialogarx.cpp \
     main.cpp \
     mainwindow.cpp \
-    qcustomplot.cpp \
+    qcustomplot.cpp
 
 HEADERS += \
     ARX.h \
@@ -35,6 +32,8 @@ HEADERS += \
     Reg_PID.h \
     SymulatorUAR.h \
     Testy_UAR.h \
+    W_SIECIOWA/DialogPolaczenia.h \
+    W_SIECIOWA/MenadzerSieci.h \
     W_SIECIOWA/Serializacja.h \
     W_SIECIOWA/clientMW.h \
     W_SIECIOWA/myTCPclient.h \
@@ -45,9 +44,10 @@ HEADERS += \
     json.hpp \
     mainwindow.h \
     qcustomplot.h \
-    TestUtils.h \
+    TestUtils.h
 
 FORMS += \
+    W_SIECIOWA/DialogPolaczenia.ui \
     dialogarx.ui \
     mainwindow.ui
 

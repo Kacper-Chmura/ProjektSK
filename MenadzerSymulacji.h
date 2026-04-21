@@ -57,6 +57,17 @@ public:
     double getYMinARX() const { return _model.getYMin(); }
     double getYMaxARX() const { return _model.getYMax(); }
 
+    // ---- Dostęp do obiektów warstwy danych (potrzebny przez MenadzerSieci) ----
+    RegulatorPID* getPID()   { return &_regulator; }
+    ModelARX*     getARX()   { return &_model; }
+
+    // ---- Parametry generatora do serializacji ----
+    TypGeneratora getTypGeneratora() const { return _aktywny_generator; }
+    double getGenAmplituda() const;
+    double getGenOkres() const;
+    double getGenWypelnienie() const;
+    double getGenSkladowaStala() const;
+
 signals:
     void noweDataReady(double czas, double y_zad, double y, double u, double e,
                        RegulatorPID::Skladowe skladowe);

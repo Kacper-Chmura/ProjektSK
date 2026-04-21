@@ -18,6 +18,10 @@ public:
 	double generuj(double t) override;
 	void ustawParametry(double amplituda, double okres, double skladowaStala) override;
 
+    double getAmplituda()     const { return mAmplituda; }
+    double getOkres()         const { return mOkres; }
+    double getSkladowaStala() const { return mSkladowaStala; }
+
 private:
 	double mAmplituda;
 	double mOkres;
@@ -30,6 +34,11 @@ public:
 	double generuj(double t) override;
 	void ustawParametry(double amplituda, double okres, double skladowaStala) override;
 	void setWypelnienie(double duty);
+
+    double getAmplituda()     const { return mAmplituda; }
+    double getOkres()         const { return mOkres; }
+    double getWypelnienie()   const { return mWypelnienie; }
+    double getSkladowaStala() const { return mSkladowaStala; }
 
 private:
 	double mAmplituda;

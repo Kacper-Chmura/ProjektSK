@@ -100,3 +100,22 @@ void MenadzerSymulacji::setOgraniczeniaRegulowanej(double min, double max) { _mo
 
 double MenadzerSymulacji::getSterowanie() const { return _symulator.getSterowanie(); }
 double MenadzerSymulacji::getUchyb() const { return _symulator.getUchyb(); }
+
+double MenadzerSymulacji::getGenAmplituda() const {
+    if (_aktywny_generator == TypGeneratora::Sinusoidalny)
+        return _gen_sinusoidalny.getAmplituda();
+    return _gen_prostokatny.getAmplituda();
+}
+double MenadzerSymulacji::getGenOkres() const {
+    if (_aktywny_generator == TypGeneratora::Sinusoidalny)
+        return _gen_sinusoidalny.getOkres();
+    return _gen_prostokatny.getOkres();
+}
+double MenadzerSymulacji::getGenWypelnienie() const {
+    return _gen_prostokatny.getWypelnienie();
+}
+double MenadzerSymulacji::getGenSkladowaStala() const {
+    if (_aktywny_generator == TypGeneratora::Sinusoidalny)
+        return _gen_sinusoidalny.getSkladowaStala();
+    return _gen_prostokatny.getSkladowaStala();
+}
