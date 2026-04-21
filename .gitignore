@@ -127,7 +127,6 @@ Desktop.ini
 *.o
 *.obj
 *.moc
-*.ui
 *.db
 *.idb
 *.pdb
