@@ -65,8 +65,8 @@ MainWindow::MainWindow(QWidget *parent)
     _labelStatusSieci->setFrameStyle(QFrame::Panel | QFrame::Sunken);
     statusBar()->addPermanentWidget(_labelStatusSieci);
 
-    connect(ui->btnPolacz,  &QPushButton::clicked, this, &MainWindow::on_btnPolacz_clicked);
-    connect(ui->btnRozlacz, &QPushButton::clicked, this, &MainWindow::on_btnRozlacz_clicked);
+    //connect(ui->btnPolacz,  &QPushButton::clicked, this, &MainWindow::on_btnPolacz_clicked);
+    //connect(ui->btnRozlacz, &QPushButton::clicked, this, &MainWindow::on_btnRozlacz_clicked);
     ui->btnRozlacz->setEnabled(false);
 }
 
@@ -342,6 +342,9 @@ void MainWindow::on_btnLoad_clicked()
 
 void MainWindow::on_btnPolacz_clicked()
 {
+    ui->btnPolacz->setEnabled(false);
+    ui->btnPolacz->setEnabled(true);
+
     if (dialogPolaczenia->exec() != QDialog::Accepted)
         return;
 
