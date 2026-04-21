@@ -6,6 +6,7 @@
 #include <QTcpSocket>
 #include <QVector>
 #include <QByteArray>
+#include <QMap>
 
 class MyTCPServer : public QObject
 {
@@ -16,14 +17,13 @@ public:
     bool startListening(int port);
     void stopListening();
     bool isListening() { return m_isListening; }
-    int getNumClients();
+    int  getNumClients();
 
-    // Nowa metoda wysyłająca ramkę
     void wyslijRamke(quint8 typ, const QByteArray& payload, int numCli);
+
 signals:
     void newClientConnected(QString adr);
     void clientDisconnetced(int num);
-    // Nowy sygnał emitowany po odebraniu i zdekodowaniu ramki
     void nowaRamkaOd(int typ, QByteArray payload, int numCli);
 
 private slots:
@@ -32,12 +32,14 @@ private slots:
     void slot_newMsg();
 
 private:
-    int getClinetID();
+    int  getClientID(QTcpSocket* socket);
+    void przetorzBufor(QTcpSocket* socket);
 
-    bool m_isListening = false;
-    int m_port = 12345;
-    QTcpServer m_server;
-    QVector<QTcpSocket*> m_clients;
+    bool               m_isListening = false;
+    int                m_port        = 12345;
+    QTcpServer         m_server;
+    QVector<QTcpSocket*>          m_clients;
+    QMap<QTcpSocket*, QByteArray> m_bufory;  // bufor odbioru per klient
 };
 
 #endif // MYTCPSERVER_H

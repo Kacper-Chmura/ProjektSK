@@ -2,8 +2,12 @@
 #include <QDataStream>
 #include <QIODevice>
 #include <QVector>
+#include <QNetworkInterface>
 #include <vector>
 
+// =========================================================================
+//  PID
+// =========================================================================
 QByteArray serializePID(const RegulatorPID& pid, quint32 timestamp) {
     QByteArray buf;
     QDataStream out(&buf, QIODevice::WriteOnly);
@@ -33,16 +37,19 @@ quint32 deserializePID(QByteArray& buf, RegulatorPID& pid) {
     return timestamp;
 }
 
+// =========================================================================
+//  ARX
+// =========================================================================
 QByteArray serializeARX(const ModelARX& arx, quint32 timestamp) {
     QByteArray buf;
     QDataStream out(&buf, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_6_0);
 
     QVector<double> qA;
-    for(double d : arx.getA()) qA.append(d);
+    for (double d : arx.getA()) qA.append(d);
 
     QVector<double> qB;
-    for(double d : arx.getB()) qB.append(d);
+    for (double d : arx.getB()) qB.append(d);
 
     out << timestamp
         << qA << qB
@@ -65,17 +72,11 @@ quint32 deserializeARX(QByteArray& buf, ModelARX& arx) {
 
     in >> timestamp >> qA >> qB >> k >> pozsz >> ogr >> umin >> umax >> ymin >> ymax;
 
-    std::vector<double> stdA;
-    stdA.reserve(qA.size());
-    for(double d : qA) stdA.push_back(d);
-
-    std::vector<double> stdB;
-    stdB.reserve(qB.size());
-    for(double d : qB) stdB.push_back(d);
+    std::vector<double> stdA(qA.begin(), qA.end());
+    std::vector<double> stdB(qB.begin(), qB.end());
 
     arx.setA(stdA);
     arx.setB(stdB);
-
     arx.setk(k);
     arx.setpozsz(pozsz);
     arx.setOgraniczenia(ogr);
@@ -83,4 +84,52 @@ quint32 deserializeARX(QByteArray& buf, ModelARX& arx) {
     arx.setOgraniczeniaRegulowanej(ymin, ymax);
 
     return timestamp;
+}
+
+// =========================================================================
+//  Generator
+// =========================================================================
+QByteArray serializeGenerator(int typGen, const ParamyGeneratora& p) {
+    QByteArray buf;
+    QDataStream out(&buf, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+
+    out << (qint32)typGen
+        << p.amplituda
+        << p.okres
+        << p.wypelnienie
+        << p.skladowaStala;
+
+    return buf;
+}
+
+void deserializeGenerator(QByteArray& buf, int& outTypGen, ParamyGeneratora& p) {
+    QDataStream in(&buf, QIODevice::ReadOnly);
+    in.setVersion(QDataStream::Qt_6_0);
+
+    qint32 typ;
+    in >> typ >> p.amplituda >> p.okres >> p.wypelnienie >> p.skladowaStala;
+    outTypGen = (int)typ;
+    p.typGeneratora = outTypGen;
+}
+
+// =========================================================================
+//  Info połączenia
+// =========================================================================
+QByteArray serializeInfoPolaczenia(int rola, const QString& lokalneIP) {
+    QByteArray buf;
+    QDataStream out(&buf, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+
+    out << (qint32)rola << lokalneIP;
+    return buf;
+}
+
+void deserializeInfoPolaczenia(QByteArray& buf, int& outRola, QString& outIP) {
+    QDataStream in(&buf, QIODevice::ReadOnly);
+    in.setVersion(QDataStream::Qt_6_0);
+
+    qint32 rola;
+    in >> rola >> outIP;
+    outRola = (int)rola;
 }

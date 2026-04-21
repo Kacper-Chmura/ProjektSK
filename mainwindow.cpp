@@ -4,61 +4,82 @@
 #include <fstream>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QNetworkInterface>
 
 using json = nlohmann::json;
 
+// =========================================================================
+//  Konstruktor / destruktor
+// =========================================================================
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
 
+    // ---- warstwa danych / usług ----
     std::vector<double> startA = {-0.4};
     std::vector<double> startB = {0.6};
 
-    manager = new MenadzerSymulacji(0.5, 10.0, 0.1, 0.2, -10.0, 10.0, startA, startB, 1, 0.0, this);
+    manager = new MenadzerSymulacji(0.5, 10.0, 0.0, 0.05, -10.0, 10.0,
+                                    startA, startB, 1, 0.0, this);
 
     connect(manager, &MenadzerSymulacji::noweDataReady,
-            this, &MainWindow:: onNoweData, Qt::DirectConnection);
+            this, &MainWindow::onNoweData, Qt::DirectConnection);
 
-    arxDialog = new DialogARX(this);
+    // ---- warstwa sieciowa ----
+    menadzerSieci = new MenadzerSieci(manager, this);
+    connect(menadzerSieci, &MenadzerSieci::polaczonySygnal,      this, &MainWindow::onPolaczono);
+    connect(menadzerSieci, &MenadzerSieci::rozlaczenieZewnetrzne, this, &MainWindow::onRozlaczenieZewnetrzne);
+    connect(menadzerSieci, &MenadzerSieci::konfiguracjaOdebrana,  this, &MainWindow::onKonfiguracjaOdebrana);
+
+    // ---- dialogi ----
+    arxDialog        = new DialogARX(this);
+    dialogPolaczenia = new DialogPolaczenia(this);
 
     arxDialog->setParams(startA, startB, 1, 0.0);
     arxDialog->setOgraniczenia(true, -10.0, 10.0, -10.0, 10.0);
 
+    // ---- wykresy ----
     setupPlots();
 
+    // ---- PID spinboxy ----
     ui->spinKp->setValue(0.5);
     ui->spinTi->setValue(10.0);
-    ui->spinTd->setValue(0.1);
+    ui->spinTd->setValue(0.0);
     ui->spinTp->setMinimum(10);
-    ui->spinTp->setMaximum(1000);
-    ui->spinTp->setValue(200);
+    ui->spinTp->setMaximum(500);
+    ui->spinTp->setValue(50);
     ui->spinTp->setSuffix(" ms");
 
-    connect(ui->spinTp, &QDoubleSpinBox::editingFinished,
-            this, &MainWindow::onIntervalChanged);
+    connect(ui->spinTp, &QDoubleSpinBox::editingFinished, this, &MainWindow::onIntervalChanged);
+    connect(ui->spinKp, &QDoubleSpinBox::editingFinished, this, &MainWindow::updatePidParams);
+    connect(ui->spinTi, &QDoubleSpinBox::editingFinished, this, &MainWindow::updatePidParams);
+    connect(ui->spinTd, &QDoubleSpinBox::editingFinished, this, &MainWindow::updatePidParams);
 
+    // ---- Generator ----
     ui->spinFill->setValue(0.5);
-
-    connect(ui->spinKp, &QDoubleSpinBox::editingFinished,
-            this, &MainWindow::updatePidParams);
-    connect(ui->spinTi, &QDoubleSpinBox::editingFinished,
-            this, &MainWindow::updatePidParams);
-    connect(ui->spinTd, &QDoubleSpinBox::editingFinished,
-            this, &MainWindow::updatePidParams);
-
-    connect(ui->spinAmp, &QSpinBox::editingFinished, this, &MainWindow::updateGeneratorParams);
-    connect(ui->spinPeriod, &QSpinBox::editingFinished, this, &MainWindow::updateGeneratorParams);
-    connect(ui->spinFill, &QDoubleSpinBox::editingFinished, this, &MainWindow:: updateGeneratorParams);
-    connect(ui->spinOffset, &QDoubleSpinBox::editingFinished, this, &MainWindow:: updateGeneratorParams);
+    connect(ui->spinAmp,    &QSpinBox::editingFinished,         this, &MainWindow::updateGeneratorParams);
+    connect(ui->spinPeriod, &QSpinBox::editingFinished,         this, &MainWindow::updateGeneratorParams);
+    connect(ui->spinFill,   &QDoubleSpinBox::editingFinished,   this, &MainWindow::updateGeneratorParams);
+    connect(ui->spinOffset, &QDoubleSpinBox::editingFinished,   this, &MainWindow::updateGeneratorParams);
     connect(ui->comboGenType, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &MainWindow:: updateGeneratorParams);
+            this, &MainWindow::updateGeneratorParams);
 
+    // ---- Okno obserwacji ----
     ui->spinWindow->setValue(10);
-
     connect(ui->spinWindow, QOverload<int>::of(&QSpinBox::valueChanged),
             this, &MainWindow::onWindowChanged);
+
+    // ---- Status bar – informacje sieciowe ----
+    _labelStatusSieci = new QLabel("  Tryb: stacjonarny  ", this);
+    _labelStatusSieci->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    statusBar()->addPermanentWidget(_labelStatusSieci);
+
+    // ---- Przyciski sieciowe ----
+    connect(ui->btnPolacz,  &QPushButton::clicked, this, &MainWindow::on_btnPolacz_clicked);
+    connect(ui->btnRozlacz, &QPushButton::clicked, this, &MainWindow::on_btnRozlacz_clicked);
+    ui->btnRozlacz->setEnabled(false);
 }
 
 MainWindow::~MainWindow()
@@ -67,59 +88,38 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+// =========================================================================
+//  Wykresy
+// =========================================================================
 void MainWindow::setupPlots()
 {
+    // ---- Wykres główny: wartość zadana + regulowana ----
     ui->plotMain->addGraph();
     ui->plotMain->graph(0)->setPen(QPen(Qt::red));
-    ui->plotMain->graph(0)->setName("Wartość Zadana");
-
-    QCPItemText *labelMain = new QCPItemText(ui->plotMain);
-    labelMain->setPositionAlignment(Qt::AlignTop | Qt::AlignHCenter);
-    labelMain->position->setType(QCPItemPosition::ptAxisRectRatio);
-    labelMain->position->setCoords(0.5, -0.03);
-    labelMain->setClipToAxisRect(false);
-    labelMain->setFont(QFont("Arial", 11));
-    labelMain->setColor(Qt::black);
-    labelMain->setText("Wykres Główny");
+    ui->plotMain->graph(0)->setName("Wartość Zadana (w)");
 
     ui->plotMain->addGraph();
     ui->plotMain->graph(1)->setPen(QPen(Qt::blue));
-    ui->plotMain->graph(1)->setName("Wyjście Y");
+    ui->plotMain->graph(1)->setName("Wartość Regulowana (y)");
 
-    ui->plotMain->yAxis->setLabel("Y / Zadana");
+    ui->plotMain->yAxis->setLabel("w, y");
     ui->plotMain->legend->setVisible(true);
-
     ui->plotMain->legend->setBrush(Qt::NoBrush);
     ui->plotMain->legend->setBorderPen(Qt::NoPen);
 
+    // ---- Uchyb ----
     ui->plotError->addGraph();
     ui->plotError->graph(0)->setPen(QPen(Qt::black));
-    ui->plotError->graph(0)->setName("Uchyb");
-    ui->plotError->yAxis->setLabel("Uchyb");
+    ui->plotError->graph(0)->setName("Uchyb (e)");
+    ui->plotError->yAxis->setLabel("Uchyb e");
 
-    QCPItemText *labelUchyb = new QCPItemText(ui->plotError);
-    labelUchyb->setPositionAlignment(Qt::AlignTop | Qt::AlignHCenter);
-    labelUchyb->position->setType(QCPItemPosition::ptAxisRectRatio);
-    labelUchyb->position->setCoords(0.5, -0.04);
-    labelUchyb->setClipToAxisRect(false);
-    labelUchyb->setFont(QFont("Arial", 10));
-    labelUchyb->setColor(Qt::black);
-    labelUchyb->setText("Wykres Uchybu");
-
+    // ---- Sterowanie ----
     ui->plotControl->addGraph();
     ui->plotControl->graph(0)->setPen(QPen(Qt::darkGreen));
-    ui->plotControl->graph(0)->setName("Sterowanie U");
-    ui->plotControl->yAxis->setLabel("Sterowanie");
+    ui->plotControl->graph(0)->setName("Sterowanie (u)");
+    ui->plotControl->yAxis->setLabel("Sterowanie u");
 
-    QCPItemText *labelSterowanie = new QCPItemText(ui->plotControl);
-    labelSterowanie->setPositionAlignment(Qt::AlignTop | Qt::AlignHCenter);
-    labelSterowanie->position->setType(QCPItemPosition::ptAxisRectRatio);
-    labelSterowanie->position->setCoords(0.5, -0.04);
-    labelSterowanie->setClipToAxisRect(false);
-    labelSterowanie->setFont(QFont("Arial", 10));
-    labelSterowanie->setColor(Qt::black);
-    labelSterowanie->setText("Wykres Sterowania");
-
+    // ---- Składowe PID ----
     ui->plotPID->addGraph();
     ui->plotPID->graph(0)->setPen(QPen(Qt::green));
     ui->plotPID->graph(0)->setName("P");
@@ -134,39 +134,62 @@ void MainWindow::setupPlots()
 
     ui->plotPID->yAxis->setLabel("Składowe PID");
     ui->plotPID->legend->setVisible(true);
-
     ui->plotPID->legend->setBrush(Qt::NoBrush);
     ui->plotPID->legend->setBorderPen(Qt::NoPen);
 
-    QCPItemText *labelPID = new QCPItemText(ui->plotPID);
-    labelPID->setPositionAlignment(Qt::AlignTop | Qt::AlignHCenter);
-    labelPID->position->setType(QCPItemPosition::ptAxisRectRatio);
-    labelPID->position->setCoords(0.5, -0.04);
-    labelPID->setClipToAxisRect(false);
-    labelPID->setFont(QFont("Arial", 10));
-    labelPID->setColor(Qt::black);
-    labelPID->setText("Wykres składowych PID");
-
     QVector<QCustomPlot*> plots = {ui->plotMain, ui->plotError, ui->plotControl, ui->plotPID};
-    for(auto plot : plots) {
+    for (auto plot : plots) {
         plot->xAxis->setLabel("Czas [s]");
         plot->setInteraction(QCP::iRangeDrag, true);
         plot->setInteraction(QCP::iRangeZoom, true);
-        plot->xAxis->setLabelPadding(0);
-        plot->xAxis->setTickLabelPadding(2);
-        plot->plotLayout()->setMargins(QMargins(0,0,0,0));
     }
+}
+
+void MainWindow::updatePlots(double t, double y_zad, double y, double u, double e,
+                              RegulatorPID::Skladowe pid)
+{
+    ui->plotMain->graph(0)->addData(t, y_zad);
+    ui->plotMain->graph(1)->addData(t, y);
+    ui->plotError->graph(0)->addData(t, e);
+    ui->plotControl->graph(0)->addData(t, u);
+    ui->plotPID->graph(0)->addData(t, pid.P);
+    ui->plotPID->graph(1)->addData(t, pid.I);
+    ui->plotPID->graph(2)->addData(t, pid.D);
+
+    double window = ui->spinWindow->value();
+
+    QVector<QCustomPlot*> plots = {ui->plotMain, ui->plotError, ui->plotControl, ui->plotPID};
+    for (auto plot : plots) {
+        plot->xAxis->setRange(t, window, Qt::AlignRight);
+
+        for (int i = 0; i < plot->graphCount(); ++i)
+            plot->graph(i)->data()->removeBefore(t - window - 1.0);
+
+        plot->yAxis->rescale();
+        QCPRange range = plot->yAxis->range();
+        double center = range.center();
+        double size   = (range.size() == 0.0) ? 1.0 : range.size();
+        plot->yAxis->setRange(center - size * 0.6, center + size * 0.6);
+
+        plot->replot(QCustomPlot::rpQueuedReplot);
+    }
+}
+
+// =========================================================================
+//  Sloty symulacji
+// =========================================================================
+void MainWindow::onNoweData(double t, double y_zad, double y, double u, double e,
+                             RegulatorPID::Skladowe skladowe)
+{
+    updatePlots(t, y_zad, y, u, e, skladowe);
 }
 
 void MainWindow::on_btnStart_clicked()
 {
     int intervalMs = ui->spinTp->value();
     manager->getZarzadzanieCzasem()->setInterwalMs(intervalMs);
-
     updateGeneratorParams();
-
     on_btnUpdatePID_clicked();
-
     manager->startSymulacji();
 }
 
@@ -182,217 +205,32 @@ void MainWindow::on_btnReset_clicked()
     manager->resetPamieciPID();
 
     QVector<QCustomPlot*> plots = {ui->plotMain, ui->plotError, ui->plotControl, ui->plotPID};
-    for(auto plot : plots) {
-        for(int i=0; i<plot->graphCount(); ++i) {
+    for (auto plot : plots) {
+        for (int i = 0; i < plot->graphCount(); ++i)
             plot->graph(i)->data()->clear();
-        }
         plot->replot();
     }
 }
 
-void MainWindow::onNoweData(double t, double y_zad, double y, double u, double e,
-                            RegulatorPID::Skladowe skladowe)
-{
-    updatePlots(t, y_zad, y, u, e, skladowe);
-}
-
-void MainWindow::updatePidParams()
-{
-    double Kp = ui->spinKp->value();
-    double Ti = ui->spinTi->value();
-    double Td = ui->spinTd->value();
-    double Tp = ui->spinTp->value() / 1000.0;
-    manager->setNastawyPID(Kp, Ti, Td, -10.0, 10.0, Tp);
-}
-
-void MainWindow::updateGeneratorParams()
-{
-    double amp = ui->spinAmp->value();
-    double per = ui->spinPeriod->value();
-    double fill = ui->spinFill->value();
-    double offset = ui->spinOffset->value();
-
-    if(ui->comboGenType->currentIndex() == 1) {
-        manager->setTypGeneratora(MenadzerSymulacji:: TypGeneratora::Sinusoidalny);
-        manager->setParametryGeneratoraSinusoidalnego(amp, per, offset);
-    } else {
-        manager->setTypGeneratora(MenadzerSymulacji:: TypGeneratora::Prostokatny);
-        manager->setParametryGeneratoraProstokatnego(amp, per, fill, offset);
-    }
-}
-
-void MainWindow::updatePlots(double t, double y_zad, double y, double u, double e, RegulatorPID::Skladowe pid)
-{
-
-    ui->plotMain->graph(0)->addData(t, y_zad);
-    ui->plotMain->graph(1)->addData(t, y);
-
-    ui->plotError->graph(0)->addData(t, e);
-
-    ui->plotControl->graph(0)->addData(t, u);
-
-    ui->plotPID->graph(0)->addData(t, pid.P);
-    ui->plotPID->graph(1)->addData(t, pid.I);
-    ui->plotPID->graph(2)->addData(t, pid.D);
-
-    double window = ui->spinWindow->value();
-
-    QVector<QCustomPlot*> plots = {ui->plotMain, ui->plotError, ui->plotControl, ui->plotPID};
-
-    for(auto plot : plots) {
-        plot->xAxis->setRange(t, window, Qt::AlignRight);
-
-        for(int i=0; i<plot->graphCount(); ++i) {
-            plot->graph(i)->data()->removeBefore(t - window - 1.0);
-        }
-
-        plot->yAxis->rescale();
-
-        QCPRange range = plot->yAxis->range();
-        double center = range.center();
-        double size = range.size();
-
-        if (size == 0.0) size = 1.0;
-
-        plot->yAxis->setRange(center - size * 0.6, center + size * 0.6);
-
-        plot->replot(QCustomPlot::rpQueuedReplot);
-    }
-}
-
+// =========================================================================
+//  PID
+// =========================================================================
 void MainWindow::on_btnUpdatePID_clicked()
 {
     double Kp = ui->spinKp->value();
     double Ti = ui->spinTi->value();
     double Td = ui->spinTd->value();
     double Tp = ui->spinTp->value() / 1000.0;
-
     manager->setNastawyPID(Kp, Ti, Td, -10.0, 10.0, Tp);
+
+    // Jeśli jesteśmy w trybie sieciowym jako regulator – wyślij zmiany
+    if (_trybSieciowy && menadzerSieci->getRole() == RolaSieciowa::Regulator)
+        menadzerSieci->wyslijKonfiguracjePID();
 }
 
-void MainWindow::onIntervalChanged()
+void MainWindow::updatePidParams()
 {
-    int intervalMs = ui->spinTp->value();
-    manager->getZarzadzanieCzasem()->setInterwalMs(intervalMs);
-
-    double Tp = intervalMs / 1000.0;
-    double Kp = ui->spinKp->value();
-    double Ti = ui->spinTi->value();
-    double Td = ui->spinTd->value();
-    manager->setNastawyPID(Kp, Ti, Td, -10.0, 10.0, Tp);
-}
-
-void MainWindow::on_btnOpenARX_clicked()
-{
-    arxDialog->setOgraniczenia(
-        manager->getOgraniczeniaARX(),
-        manager->getUMinARX(),
-        manager->getUMaxARX(),
-        manager->getYMinARX(),
-        manager->getYMaxARX()
-        );
-
-    if (arxDialog->exec() == QDialog::Accepted) {
-        manager->setParametryARX(
-            arxDialog->getA(),
-            arxDialog->getB(),
-            arxDialog->getK(),
-            arxDialog->getPozSz()
-            );
-
-        manager->setOgraniczeniaARX(arxDialog->getOgraniczeniaWlaczone());
-        manager->setOgraniczeniaSterowania(arxDialog->getUMin(), arxDialog->getUMax());
-        manager->setOgraniczeniaRegulowanej(arxDialog->getYMin(), arxDialog->getYMax());
-    }
-}
-
-void MainWindow::onWindowChanged()
-{
-
-}
-
-void MainWindow::on_btnSave_clicked()
-{
-    json j;
-    j["PID"] = {
-        {"Kp", ui->spinKp->value()},
-        {"Ti", ui->spinTi->value()},
-        {"Td", ui->spinTd->value()},
-        {"Tp", ui->spinTp->value()}
-    };
-
-    j["ARX"] = {
-        {"k", arxDialog->getK()},
-        {"noise", arxDialog->getPozSz()},
-        {"A", arxDialog->getA()},
-        {"B", arxDialog->getB()},
-        {"ograniczenia_wlaczone", arxDialog->getOgraniczeniaWlaczone()},
-        {"u_min", arxDialog->getUMin()},
-        {"u_max", arxDialog->getUMax()},
-        {"y_min", arxDialog->getYMin()},
-        {"y_max", arxDialog->getYMax()}
-    };
-
-    j["Gen"] = {
-        {"Type", ui->comboGenType->currentIndex()},
-        {"Amp", ui->spinAmp->value()},
-        {"Per", ui->spinPeriod->value()},
-        {"Fill", ui->spinFill->value()},
-        {"Offset", ui->spinOffset->value()}
-    };
-
-
-    QString fileName = QFileDialog::getSaveFileName(this, "Zapisz konfigurację", "", "JSON (*.json)");
-    if(fileName.isEmpty()) return;
-
-    std::ofstream o(fileName.toStdString());
-    o << j.dump(4);
-}
-
-void MainWindow::on_btnLoad_clicked()
-{
-    QString fileName = QFileDialog::getOpenFileName(this, "Wczytaj konfigurację", "", "JSON (*.json)");
-    if(fileName.isEmpty()) return;
-
-    std::ifstream i(fileName.toStdString());
-    json j;
-    if(i >> j) {
-        ui->spinKp->setValue(j["PID"]["Kp"]);
-        ui->spinTi->setValue(j["PID"]["Ti"]);
-        ui->spinTd->setValue(j["PID"]["Td"]);
-        ui->spinTp->setValue(j["PID"]["Tp"]);
-
-        ui->comboGenType->setCurrentIndex(j["Gen"]["Type"]);
-        ui->spinAmp->setValue(j["Gen"]["Amp"]);
-        ui->spinPeriod->setValue(j["Gen"]["Per"]);
-        ui->spinFill->setValue(j["Gen"]["Fill"]);
-        ui->spinOffset->setValue(j["Gen"]["Offset"]);
-
-        arxDialog->setParams(
-            j["ARX"]["A"].get<std::vector<double>>(),
-            j["ARX"]["B"].get<std:: vector<double>>(),
-            j["ARX"]["k"],
-            j["ARX"]["noise"]
-            );
-
-        if (j["ARX"]. contains("ograniczenia_wlaczone")) {
-            arxDialog->setOgraniczenia(
-                j["ARX"]["ograniczenia_wlaczone"],
-                j["ARX"]["u_min"],
-                j["ARX"]["u_max"],
-                j["ARX"]["y_min"],
-                j["ARX"]["y_max"]
-                );
-        }
-
-        manager->setParametryARX(arxDialog->getA(), arxDialog->getB(), j["ARX"]["k"], j["ARX"]["noise"]);
-
-        if (j["ARX"].contains("ograniczenia_wlaczone")) {
-            manager->setOgraniczeniaARX(j["ARX"]["ograniczenia_wlaczone"]);
-            manager->setOgraniczeniaSterowania(j["ARX"]["u_min"], j["ARX"]["u_max"]);
-            manager->setOgraniczeniaRegulowanej(j["ARX"]["y_min"], j["ARX"]["y_max"]);
-        }
-    }
+    on_btnUpdatePID_clicked();
 }
 
 void MainWindow::on_btnResetIntegral_clicked()
@@ -402,6 +240,384 @@ void MainWindow::on_btnResetIntegral_clicked()
 
 void MainWindow::on_comboPidType_currentIndexChanged(int index)
 {
-    if(index == 0) manager->setLiczCalkPID(RegulatorPID::LiczCalk::Zew);
-    else manager->setLiczCalkPID(RegulatorPID::LiczCalk::Wew);
+    if (index == 0) manager->setLiczCalkPID(RegulatorPID::LiczCalk::Zew);
+    else            manager->setLiczCalkPID(RegulatorPID::LiczCalk::Wew);
 }
+
+// =========================================================================
+//  ARX dialog
+// =========================================================================
+void MainWindow::on_btnOpenARX_clicked()
+{
+    arxDialog->setOgraniczenia(
+        manager->getOgraniczeniaARX(),
+        manager->getUMinARX(), manager->getUMaxARX(),
+        manager->getYMinARX(), manager->getYMaxARX()
+        );
+
+    if (arxDialog->exec() == QDialog::Accepted) {
+        manager->setParametryARX(arxDialog->getA(), arxDialog->getB(),
+                                  arxDialog->getK(), arxDialog->getPozSz());
+        manager->setOgraniczeniaARX(arxDialog->getOgraniczeniaWlaczone());
+        manager->setOgraniczeniaSterowania(arxDialog->getUMin(), arxDialog->getUMax());
+        manager->setOgraniczeniaRegulowanej(arxDialog->getYMin(), arxDialog->getYMax());
+
+        // Wyślij konfigurację ARX do drugiej instancji
+        if (_trybSieciowy)
+            menadzerSieci->wyslijKonfiguracjeARX();
+    }
+}
+
+// =========================================================================
+//  Generator
+// =========================================================================
+void MainWindow::updateGeneratorParams()
+{
+    double amp    = ui->spinAmp->value();
+    double per    = ui->spinPeriod->value();
+    double fill   = ui->spinFill->value();
+    double offset = ui->spinOffset->value();
+
+    if (ui->comboGenType->currentIndex() == 1) {
+        manager->setTypGeneratora(MenadzerSymulacji::TypGeneratora::Sinusoidalny);
+        manager->setParametryGeneratoraSinusoidalnego(amp, per, offset);
+    } else {
+        manager->setTypGeneratora(MenadzerSymulacji::TypGeneratora::Prostokatny);
+        manager->setParametryGeneratoraProstokatnego(amp, per, fill, offset);
+    }
+
+    // Wyślij generator do drugiej instancji
+    if (_trybSieciowy && menadzerSieci->getRole() == RolaSieciowa::Regulator)
+        menadzerSieci->wyslijKonfiguracjeGeneratora();
+}
+
+// =========================================================================
+//  Interwał / okno
+// =========================================================================
+void MainWindow::onIntervalChanged()
+{
+    int    intervalMs = ui->spinTp->value();
+    double Tp         = intervalMs / 1000.0;
+    manager->getZarzadzanieCzasem()->setInterwalMs(intervalMs);
+    manager->setNastawyPID(ui->spinKp->value(), ui->spinTi->value(),
+                            ui->spinTd->value(), -10.0, 10.0, Tp);
+}
+
+void MainWindow::onWindowChanged()
+{
+    // Zmiana okna obserwacji – wykresy dostosują się automatycznie przy kolejnym odświeżeniu
+}
+
+// =========================================================================
+//  Zapis / Odczyt JSON
+// =========================================================================
+void MainWindow::on_btnSave_clicked()
+{
+    json j;
+    j["PID"] = {
+        {"Kp", ui->spinKp->value()}, {"Ti", ui->spinTi->value()},
+        {"Td", ui->spinTd->value()}, {"Tp", ui->spinTp->value()}
+    };
+    j["ARX"] = {
+        {"k", arxDialog->getK()}, {"noise", arxDialog->getPozSz()},
+        {"A", arxDialog->getA()}, {"B", arxDialog->getB()},
+        {"ograniczenia_wlaczone", arxDialog->getOgraniczeniaWlaczone()},
+        {"u_min", arxDialog->getUMin()}, {"u_max", arxDialog->getUMax()},
+        {"y_min", arxDialog->getYMin()}, {"y_max", arxDialog->getYMax()}
+    };
+    j["Gen"] = {
+        {"Type", ui->comboGenType->currentIndex()},
+        {"Amp",  ui->spinAmp->value()}, {"Per", ui->spinPeriod->value()},
+        {"Fill", ui->spinFill->value()}, {"Offset", ui->spinOffset->value()}
+    };
+
+    QString fileName = QFileDialog::getSaveFileName(this, "Zapisz konfigurację", "", "JSON (*.json)");
+    if (fileName.isEmpty()) return;
+    std::ofstream o(fileName.toStdString());
+    o << j.dump(4);
+}
+
+void MainWindow::on_btnLoad_clicked()
+{
+    QString fileName = QFileDialog::getOpenFileName(this, "Wczytaj konfigurację", "", "JSON (*.json)");
+    if (fileName.isEmpty()) return;
+
+    std::ifstream i(fileName.toStdString());
+    json j;
+    if (!(i >> j)) return;
+
+    ui->spinKp->setValue(j["PID"]["Kp"]);
+    ui->spinTi->setValue(j["PID"]["Ti"]);
+    ui->spinTd->setValue(j["PID"]["Td"]);
+    ui->spinTp->setValue(j["PID"]["Tp"]);
+
+    ui->comboGenType->setCurrentIndex(j["Gen"]["Type"]);
+    ui->spinAmp->setValue(j["Gen"]["Amp"].get<int>());
+    ui->spinPeriod->setValue(j["Gen"]["Per"].get<int>());
+    ui->spinFill->setValue(j["Gen"]["Fill"]);
+    ui->spinOffset->setValue(j["Gen"]["Offset"]);
+
+    arxDialog->setParams(
+        j["ARX"]["A"].get<std::vector<double>>(),
+        j["ARX"]["B"].get<std::vector<double>>(),
+        j["ARX"]["k"],
+        j["ARX"]["noise"]
+        );
+
+    if (j["ARX"].contains("ograniczenia_wlaczone")) {
+        arxDialog->setOgraniczenia(
+            j["ARX"]["ograniczenia_wlaczone"],
+            j["ARX"]["u_min"], j["ARX"]["u_max"],
+            j["ARX"]["y_min"], j["ARX"]["y_max"]
+            );
+    }
+
+    manager->setParametryARX(arxDialog->getA(), arxDialog->getB(),
+                              j["ARX"]["k"], j["ARX"]["noise"]);
+    if (j["ARX"].contains("ograniczenia_wlaczone")) {
+        manager->setOgraniczeniaARX(j["ARX"]["ograniczenia_wlaczone"]);
+        manager->setOgraniczeniaSterowania(j["ARX"]["u_min"], j["ARX"]["u_max"]);
+        manager->setOgraniczeniaRegulowanej(j["ARX"]["y_min"], j["ARX"]["y_max"]);
+    }
+}
+
+// =========================================================================
+//  SIEĆ – nawiązanie / rozłączenie
+// =========================================================================
+void MainWindow::on_btnPolacz_clicked()
+{
+    // Wymagana świadoma akcja: otwarcie dialogu jest pierwszą operacją,
+    // kliknięcie "Połącz" w dialogu jest drugą – zabezpieczenie przed miss-click
+    if (dialogPolaczenia->exec() != QDialog::Accepted)
+        return;
+
+    KonfiguracjaPolaczenia kp = dialogPolaczenia->getKonfiguracja();
+
+    RolaSieciowa rola = (kp.rola == 0) ? RolaSieciowa::Regulator : RolaSieciowa::Obiekt;
+    menadzerSieci->setRole(rola);
+
+    if (kp.czyJestSerwer) {
+        if (!menadzerSieci->startujSerwer(kp.port)) {
+            QMessageBox::critical(this, "Błąd", "Nie można uruchomić serwera na porcie "
+                                                + QString::number(kp.port) + ".");
+            return;
+        }
+        _labelStatusSieci->setText(QString("  Serwer – nasłuchuję na porcie %1...  ").arg(kp.port));
+        ui->btnPolacz->setEnabled(false);
+        ui->btnRozlacz->setEnabled(true);
+    } else {
+        menadzerSieci->polaczJakoKlient(kp.adresIP, kp.port);
+        _labelStatusSieci->setText(QString("  Klient – łączę z %1:%2...  ")
+                                       .arg(kp.adresIP).arg(kp.port));
+        ui->btnPolacz->setEnabled(false);
+        ui->btnRozlacz->setEnabled(true);
+    }
+}
+
+void MainWindow::on_btnRozlacz_clicked()
+{
+    // Druga świadoma operacja: potwierdzenie przed rozłączeniem
+    int ret = QMessageBox::question(
+        this, "Rozłączenie",
+        "Czy na pewno chcesz przełączyć w tryb stacjonarny?\n"
+        "Jeśli symulacja jest uruchomiona, będzie kontynuowana lokalnie.",
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+
+    if (ret != QMessageBox::Yes) return;
+
+    menadzerSieci->rozlacz();
+
+    _trybSieciowy = false;
+    odblokujWszystko();
+
+    ui->btnPolacz->setEnabled(true);
+    ui->btnRozlacz->setEnabled(false);
+    _labelStatusSieci->setText("  Tryb: stacjonarny  ");
+}
+
+void MainWindow::onPolaczono(QString ip, int port, bool jakoSerwer)
+{
+    _trybSieciowy = true;
+
+    RolaSieciowa rola = menadzerSieci->getRole();
+    zastosujBlokadyTrybuSieciowego(rola);
+
+    QString rolaNazwa = (rola == RolaSieciowa::Regulator) ? "Regulator" : "Obiekt";
+    QString trybNazwa = jakoSerwer ? "Serwer" : "Klient";
+
+    _labelStatusSieci->setText(
+        QString("  [%1/%2] Połączono z: %3 (port %4)  ")
+            .arg(rolaNazwa).arg(trybNazwa).arg(ip).arg(port));
+
+    QMessageBox::information(
+        this, "Połączono",
+        QString("Połączono z instancją pod adresem: %1\nPort: %2\nRola: %3\nTryb: %4")
+            .arg(ip).arg(port).arg(rolaNazwa).arg(trybNazwa));
+}
+
+void MainWindow::onRozlaczenieZewnetrzne()
+{
+    _trybSieciowy = false;
+    odblokujWszystko();
+
+    ui->btnPolacz->setEnabled(true);
+    ui->btnRozlacz->setEnabled(false);
+    _labelStatusSieci->setText("  Tryb: stacjonarny (utracono połączenie)  ");
+
+    QMessageBox::warning(this, "Utracono połączenie",
+                         "Połączenie z drugą instancją zostało zerwane!\n"
+                         "Aplikacja przeszła w tryb stacjonarny.\n"
+                         "Jeśli symulacja była uruchomiona, działa dalej na ustawieniach lokalnych.");
+}
+
+void MainWindow::onKonfiguracjaOdebrana(TypRamki typ)
+{
+    // Aktualizujemy GUI na podstawie odebranych danych
+    switch (typ) {
+    case TypRamki::PID:
+        // Instancja obiektu nie potrzebuje aktualizować GUI PID
+        // ale aktualizujemy, żeby po rozłączeniu mieć spójną konfigurację
+        odswiezGUIPID();
+        break;
+    case TypRamki::Generator:
+        odswiezGUIGenerator();
+        break;
+    case TypRamki::InfoPolaczenia:
+        // IP jest już zapisane w menadzerSieci – aktualizujemy statusbar
+        if (_trybSieciowy) {
+            QString ip   = menadzerSieci->getZdalneIP();
+            int    port  = menadzerSieci->getZdalnyPort();
+            bool   srv   = menadzerSieci->czyJestSerwerem();
+            QString rola = (menadzerSieci->getRole() == RolaSieciowa::Regulator) ? "Regulator" : "Obiekt";
+            QString tryb = srv ? "Serwer" : "Klient";
+            _labelStatusSieci->setText(
+                QString("  [%1/%2] Połączono z: %3 (port %4)  ")
+                    .arg(rola).arg(tryb).arg(ip).arg(port));
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+// =========================================================================
+//  Blokowanie / odblokowywanie kontrolek
+// =========================================================================
+void MainWindow::zastosujBlokadyTrybuSieciowego(RolaSieciowa rola)
+{
+    if (rola == RolaSieciowa::Obiekt) {
+        // Obiekt: blokujemy WSZYSTKO poza ARX i trybem sieciowym
+        ui->btnStart->setEnabled(false);
+        ui->btnStop->setEnabled(false);
+        ui->btnReset->setEnabled(false);
+        ui->spinKp->setEnabled(false);
+        ui->spinTi->setEnabled(false);
+        ui->spinTd->setEnabled(false);
+        ui->spinTp->setEnabled(false);
+        ui->btnUpdatePID->setEnabled(false);
+        ui->btnResetIntegral->setEnabled(false);
+        ui->comboPidType->setEnabled(false);
+        ui->spinAmp->setEnabled(false);
+        ui->spinPeriod->setEnabled(false);
+        ui->spinFill->setEnabled(false);
+        ui->spinOffset->setEnabled(false);
+        ui->comboGenType->setEnabled(false);
+        ui->btnSave->setEnabled(false);
+        ui->btnLoad->setEnabled(false);
+        // ARX i rozłączenie – zostawiamy odblokowane
+        ui->btnOpenARX->setEnabled(true);
+        ui->btnRozlacz->setEnabled(true);
+    } else {
+        // Regulator: wszystko aktywne POZA ARX
+        ui->btnStart->setEnabled(true);
+        ui->btnStop->setEnabled(true);
+        ui->btnReset->setEnabled(true);
+        ui->spinKp->setEnabled(true);
+        ui->spinTi->setEnabled(true);
+        ui->spinTd->setEnabled(true);
+        ui->spinTp->setEnabled(true);
+        ui->btnUpdatePID->setEnabled(true);
+        ui->btnResetIntegral->setEnabled(true);
+        ui->comboPidType->setEnabled(true);
+        ui->spinAmp->setEnabled(true);
+        ui->spinPeriod->setEnabled(true);
+        ui->spinFill->setEnabled(true);
+        ui->spinOffset->setEnabled(true);
+        ui->comboGenType->setEnabled(true);
+        ui->btnSave->setEnabled(true);
+        ui->btnLoad->setEnabled(true);
+        // ARX zablokowane po stronie regulatora
+        ui->btnOpenARX->setEnabled(false);
+        ui->btnRozlacz->setEnabled(true);
+    }
+}
+
+void MainWindow::odblokujWszystko()
+{
+    ui->btnStart->setEnabled(true);
+    ui->btnStop->setEnabled(true);
+    ui->btnReset->setEnabled(true);
+    ui->spinKp->setEnabled(true);
+    ui->spinTi->setEnabled(true);
+    ui->spinTd->setEnabled(true);
+    ui->spinTp->setEnabled(true);
+    ui->btnUpdatePID->setEnabled(true);
+    ui->btnResetIntegral->setEnabled(true);
+    ui->comboPidType->setEnabled(true);
+    ui->spinAmp->setEnabled(true);
+    ui->spinPeriod->setEnabled(true);
+    ui->spinFill->setEnabled(true);
+    ui->spinOffset->setEnabled(true);
+    ui->comboGenType->setEnabled(true);
+    ui->btnSave->setEnabled(true);
+    ui->btnLoad->setEnabled(true);
+    ui->btnOpenARX->setEnabled(true);
+}
+
+// =========================================================================
+//  Odświeżanie GUI po odebraniu konfiguracji
+// =========================================================================
+void MainWindow::odswiezGUIPID()
+{
+    const RegulatorPID* pid = manager->getPID();
+    // Blokujemy sygnały żeby nie wywołać ponownego wysyłania
+    ui->spinKp->blockSignals(true);
+    ui->spinTi->blockSignals(true);
+    ui->spinTd->blockSignals(true);
+    ui->spinKp->setValue(pid->getKp());
+    ui->spinTi->setValue(pid->getTi());
+    ui->spinTd->setValue(pid->getTd());
+    ui->spinKp->blockSignals(false);
+    ui->spinTi->blockSignals(false);
+    ui->spinTd->blockSignals(false);
+}
+
+void MainWindow::odswiezGUIGenerator()
+{
+    int typGen = static_cast<int>(manager->getTypGeneratora());
+
+    ui->comboGenType->blockSignals(true);
+    ui->spinAmp->blockSignals(true);
+    ui->spinPeriod->blockSignals(true);
+    ui->spinFill->blockSignals(true);
+    ui->spinOffset->blockSignals(true);
+
+    ui->comboGenType->setCurrentIndex(typGen);
+    ui->spinAmp->setValue(static_cast<int>(manager->getGenAmplituda()));
+    ui->spinPeriod->setValue(static_cast<int>(manager->getGenOkres()));
+    ui->spinFill->setValue(manager->getGenWypelnienie());
+    ui->spinOffset->setValue(manager->getGenSkladowaStala());
+
+    ui->comboGenType->blockSignals(false);
+    ui->spinAmp->blockSignals(false);
+    ui->spinPeriod->blockSignals(false);
+    ui->spinFill->blockSignals(false);
+    ui->spinOffset->blockSignals(false);
+}
+
+// =========================================================================
+//  Sloty do lokalnych zmian konfiguracji (do użycia w przyszłości)
+// =========================================================================
+void MainWindow::onLocalPidChanged()     { if (_trybSieciowy) menadzerSieci->wyslijKonfiguracjePID(); }
+void MainWindow::onLocalArxChanged()     { if (_trybSieciowy) menadzerSieci->wyslijKonfiguracjeARX(); }
+void MainWindow::onLocalGeneratorChanged(){ if (_trybSieciowy) menadzerSieci->wyslijKonfiguracjeGeneratora(); }

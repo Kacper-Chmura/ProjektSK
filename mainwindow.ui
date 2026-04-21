@@ -342,6 +342,55 @@
         </property>
        </widget>
       </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size><width>40</width><height>20</height></size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QFrame" name="frameSeparatorSiec">
+        <property name="frameShape"><enum>QFrame::VLine</enum></property>
+        <property name="frameShadow"><enum>QFrame::Sunken</enum></property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnPolacz">
+        <property name="text">
+         <string>Tryb sieciowy...</string>
+        </property>
+        <property name="toolTip">
+         <string>Otwórz okno nawiązywania połączenia sieciowego</string>
+        </property>
+        <property name="styleSheet">
+         <string>QPushButton { background-color: #0d6efd; color: white; padding: 4px 10px; border-radius: 4px; }
+QPushButton:hover { background-color: #0b5ed7; }
+QPushButton:disabled { background-color: #aaaaaa; }</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnRozlacz">
+        <property name="text">
+         <string>Rozłącz sieć</string>
+        </property>
+        <property name="toolTip">
+         <string>Przełącz z powrotem w tryb stacjonarny</string>
+        </property>
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="styleSheet">
+         <string>QPushButton { background-color: #dc3545; color: white; padding: 4px 10px; border-radius: 4px; }
+QPushButton:hover { background-color: #b02a37; }
+QPushButton:disabled { background-color: #aaaaaa; }</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </item>
    </layout>

@@ -1,6 +1,7 @@
 #include "myTCPserver.h"
 #include <QDataStream>
-#include <iostream>
+
+static const int NAGLOWEK_ROZMIAR = 4;
 
 MyTCPServer::MyTCPServer(QObject *parent) : QObject(parent), m_server(this)
 {
@@ -14,6 +15,13 @@ bool MyTCPServer::startListening(int port) {
 }
 
 void MyTCPServer::stopListening() {
+    // Rozłącz wszystkich klientów przed zamknięciem
+    for (QTcpSocket* s : m_clients) {
+        s->disconnectFromHost();
+        s->deleteLater();
+    }
+    m_clients.clear();
+    m_bufory.clear();
     m_server.close();
     m_isListening = false;
 }
@@ -22,64 +30,99 @@ int MyTCPServer::getNumClients() {
     return m_clients.length();
 }
 
-// myTCPserver.cpp / myTCPclient.cpp
 void MyTCPServer::wyslijRamke(quint8 typ, const QByteArray& payload, int numCli) {
-    if(numCli < 0 || numCli >= m_clients.length()) return;
+    if (numCli < 0 || numCli >= m_clients.length()) return;
 
     QByteArray frame;
     QDataStream out(&frame, QIODevice::WriteOnly);
-    out.setVersion(QDataStream::Qt_6_0);
+    out.setByteOrder(QDataStream::BigEndian);
 
-    out << (quint8)0xAA;               // STX
-    out << typ;                        // Typ
-    out << (quint16)payload.size();    // Długość
+    out << (quint8)0xAA;
+    out << typ;
+    out << (quint16)payload.size();
 
-    // writeRawData przesuwa wskaźnik strumienia
-    out.writeRawData(payload.constData(), payload.size());
+    frame.append(payload);
 
-    // Teraz CRC zostanie dopisane na końcu a nie na początku payloadu
     quint16 crc = 0;
-    for (char b : frame) crc += (quint8)b;
-    out << crc;
+    for (unsigned char b : frame) crc += b;
+    QDataStream crcOut(&frame, QIODevice::Append);
+    crcOut.setByteOrder(QDataStream::BigEndian);
+    crcOut << crc;
 
     m_clients.at(numCli)->write(frame);
 }
-int MyTCPServer::getClinetID() {
-    QTcpSocket *client = static_cast<QTcpSocket*>(QObject::sender());
-    return m_clients.indexOf(client);
+
+int MyTCPServer::getClientID(QTcpSocket* socket) {
+    return m_clients.indexOf(socket);
 }
 
 void MyTCPServer::slot_new_client() {
     QTcpSocket *client = m_server.nextPendingConnection();
     m_clients.push_back(client);
+    m_bufory[client] = QByteArray();  // bufor dla nowego klienta
 
     connect(client, SIGNAL(disconnected()), this, SLOT(slot_client_disconnetcted()));
-    connect(client, SIGNAL(readyRead()), this, SLOT(slot_newMsg()));
+    connect(client, SIGNAL(readyRead()),    this, SLOT(slot_newMsg()));
 
     emit newClientConnected(client->peerAddress().toString());
 }
 
 void MyTCPServer::slot_client_disconnetcted() {
-    int idx = getClinetID();
+    QTcpSocket* socket = qobject_cast<QTcpSocket*>(sender());
+    if (!socket) return;
+    int idx = getClientID(socket);
     m_clients.removeAt(idx);
+    m_bufory.remove(socket);
+    socket->deleteLater();
     emit clientDisconnetced(idx);
 }
+
+// ---------------------------------------------------------------------------
+//  Odbiór z buforowaniem – poprawna obsługa fragmentacji TCP
+// ---------------------------------------------------------------------------
 void MyTCPServer::slot_newMsg() {
     QTcpSocket* socket = qobject_cast<QTcpSocket*>(sender());
     if (!socket) return;
 
-    QByteArray data = socket->readAll();
-    QDataStream in(&data, QIODevice::ReadOnly);
-    in.setVersion(QDataStream::Qt_6_0);
+    m_bufory[socket].append(socket->readAll());
+    przetorzBufor(socket);
+}
 
-    quint8 stx = 0;
-    in >> stx;
-    if (stx != 0xAA) return;
+void MyTCPServer::przetorzBufor(QTcpSocket* socket) {
+    QByteArray& buf = m_bufory[socket];
+    int numCli = getClientID(socket);
 
-    quint8 typ;
-    quint16 rozmiar;
-    in >> typ >> rozmiar;
+    while (true) {
+        if (buf.size() < NAGLOWEK_ROZMIAR) break;
 
-    QByteArray payload = data.mid(4, rozmiar);
-    emit nowaRamkaOd(typ, payload, m_clients.indexOf(socket));
+        // Synchronizacja strumienia
+        if ((quint8)buf[0] != 0xAA) {
+            int idx = buf.indexOf((char)0xAA, 1);
+            if (idx < 0) { buf.clear(); break; }
+            buf.remove(0, idx);
+            continue;
+        }
+
+        quint8  typ     = (quint8)buf[1];
+        quint16 rozmiar = ((quint8)buf[2] << 8) | (quint8)buf[3];
+
+        int calkowitaRozmiar = NAGLOWEK_ROZMIAR + rozmiar + 2;
+
+        if (buf.size() < calkowitaRozmiar) break;
+
+        // Weryfikacja CRC
+        quint16 crcObliczone = 0;
+        for (int i = 0; i < NAGLOWEK_ROZMIAR + rozmiar; ++i)
+            crcObliczone += (quint8)buf[i];
+
+        quint16 crcOdebrane = ((quint8)buf[NAGLOWEK_ROZMIAR + rozmiar] << 8)
+                            |  (quint8)buf[NAGLOWEK_ROZMIAR + rozmiar + 1];
+
+        if (crcObliczone == crcOdebrane) {
+            QByteArray payload = buf.mid(NAGLOWEK_ROZMIAR, rozmiar);
+            emit nowaRamkaOd(typ, payload, numCli);
+        }
+
+        buf.remove(0, calkowitaRozmiar);
+    }
 }

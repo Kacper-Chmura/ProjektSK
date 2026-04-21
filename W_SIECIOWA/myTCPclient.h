@@ -15,13 +15,11 @@ public:
     void disconnectFrom();
     bool isConnected() { return m_socket.isOpen(); }
 
-    // Nowa metoda wysyłająca ramkę
     void wyslijRamke(quint8 typ, const QByteArray& payload);
 
 signals:
     void connected(QString adr, int port);
     void disconnected();
-    // Nowy sygnał emitowany po odebraniu i zdekodowaniu ramki
     void nowaRamka(int typ, QByteArray payload);
 
 private slots:
@@ -29,9 +27,13 @@ private slots:
     void slot_readyRead();
 
 private:
+    void przetorzBufor();
+
     QTcpSocket m_socket;
-    QString m_ipAddress = "127.0.0.1";
-    int m_port = 12345;
+    QString    m_ipAddress = "127.0.0.1";
+    int        m_port      = 12345;
+
+    QByteArray m_buforOdbioru;  // bufor na fragmenty TCP
 };
 
 #endif // MYTCPCLIENT_H
