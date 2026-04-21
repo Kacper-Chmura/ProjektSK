@@ -5,9 +5,6 @@
 #include <QNetworkInterface>
 #include <vector>
 
-// =========================================================================
-//  PID
-// =========================================================================
 QByteArray serializePID(const RegulatorPID& pid, quint32 timestamp) {
     QByteArray buf;
     QDataStream out(&buf, QIODevice::WriteOnly);
@@ -37,9 +34,6 @@ quint32 deserializePID(QByteArray& buf, RegulatorPID& pid) {
     return timestamp;
 }
 
-// =========================================================================
-//  ARX
-// =========================================================================
 QByteArray serializeARX(const ModelARX& arx, quint32 timestamp) {
     QByteArray buf;
     QDataStream out(&buf, QIODevice::WriteOnly);
@@ -86,9 +80,6 @@ quint32 deserializeARX(QByteArray& buf, ModelARX& arx) {
     return timestamp;
 }
 
-// =========================================================================
-//  Generator
-// =========================================================================
 QByteArray serializeGenerator(int typGen, const ParamyGeneratora& p) {
     QByteArray buf;
     QDataStream out(&buf, QIODevice::WriteOnly);
@@ -113,9 +104,6 @@ void deserializeGenerator(QByteArray& buf, int& outTypGen, ParamyGeneratora& p) 
     p.typGeneratora = outTypGen;
 }
 
-// =========================================================================
-//  Info połączenia
-// =========================================================================
 QByteArray serializeInfoPolaczenia(int rola, const QString& lokalneIP) {
     QByteArray buf;
     QDataStream out(&buf, QIODevice::WriteOnly);

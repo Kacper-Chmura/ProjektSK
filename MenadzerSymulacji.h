@@ -26,7 +26,7 @@ public:
     bool czySymulacjaUruchomiona() const;
 
     double getWartoscZadana() const;
-    double getWartoscRegulowana() const { return _ostatnia_wartosc_regulowana; }  // ✅ DODAJ
+    double getWartoscRegulowana() const { return _ostatnia_wartosc_regulowana; }
     double getSterowanie() const;
     double getUchyb() const;
 
@@ -57,11 +57,9 @@ public:
     double getYMinARX() const { return _model.getYMin(); }
     double getYMaxARX() const { return _model.getYMax(); }
 
-    // ---- Dostęp do obiektów warstwy danych (potrzebny przez MenadzerSieci) ----
     RegulatorPID* getPID()   { return &_regulator; }
     ModelARX*     getARX()   { return &_model; }
 
-    // ---- Parametry generatora do serializacji ----
     TypGeneratora getTypGeneratora() const { return _aktywny_generator; }
     double getGenAmplituda() const;
     double getGenOkres() const;

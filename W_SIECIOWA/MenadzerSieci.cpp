@@ -4,29 +4,21 @@
 #include <QDataStream>
 #include <QNetworkInterface>
 
-// =========================================================================
-//  Konstruktor
-// =========================================================================
 MenadzerSieci::MenadzerSieci(MenadzerSymulacji* manager, QObject* parent)
     : QObject(parent), _manager(manager)
 {
     _klient = new MyTCPClient(this);
     _serwer = new MyTCPServer(this);
 
-    // ---- sygnały klienta ----
     connect(_klient, &MyTCPClient::connected,    this, &MenadzerSieci::onKlientPolaczony);
     connect(_klient, &MyTCPClient::disconnected, this, &MenadzerSieci::onKlientRozlaczony);
     connect(_klient, &MyTCPClient::nowaRamka,    this, &MenadzerSieci::onNowaRamkaKlient);
 
-    // ---- sygnały serwera ----
     connect(_serwer, &MyTCPServer::newClientConnected, this, &MenadzerSieci::onNowyKlientSerwer);
     connect(_serwer, &MyTCPServer::clientDisconnetced, this, &MenadzerSieci::onKlientSerwRozlaczony);
     connect(_serwer, &MyTCPServer::nowaRamkaOd,        this, &MenadzerSieci::onNowaRamkaSerwer);
 }
 
-// =========================================================================
-//  Publiczne – zarządzanie połączeniem
-// =========================================================================
 bool MenadzerSieci::startujSerwer(int port)
 {
     _czyJestSerwer = true;
@@ -51,9 +43,6 @@ void MenadzerSieci::rozlacz()
     _zdalneIP.clear();
 }
 
-// =========================================================================
-//  Prywatne – wysyłanie ramki
-// =========================================================================
 void MenadzerSieci::wyslijRamke(quint8 typ, const QByteArray& payload)
 {
     if (!_polaczony) return;
@@ -66,9 +55,6 @@ void MenadzerSieci::wyslijRamke(quint8 typ, const QByteArray& payload)
     }
 }
 
-// =========================================================================
-//  Publiczne – wysyłanie konfiguracji
-// =========================================================================
 void MenadzerSieci::wyslijKonfiguracjePID()
 {
     QByteArray data = serializePID(*_manager->getPID(), 0);
@@ -101,9 +87,6 @@ void MenadzerSieci::wyslijPelnaKonfiguracje()
     wyslijKonfiguracjeGeneratora();
 }
 
-// =========================================================================
-//  Pomocnicze – lokalny adres IP
-// =========================================================================
 static QString pobierzLokalneIP()
 {
     for (const QNetworkInterface& iface : QNetworkInterface::allInterfaces()) {
@@ -116,9 +99,6 @@ static QString pobierzLokalneIP()
     return "127.0.0.1";
 }
 
-// =========================================================================
-//  Sloty – klient
-// =========================================================================
 void MenadzerSieci::onKlientPolaczony(QString adres, int port)
 {
     _polaczony  = true;
@@ -148,9 +128,6 @@ void MenadzerSieci::onNowaRamkaKlient(int typ, QByteArray payload)
     obsluzRamke(static_cast<TypRamki>(typ), payload);
 }
 
-// =========================================================================
-//  Sloty – serwer
-// =========================================================================
 void MenadzerSieci::onNowyKlientSerwer(QString adres)
 {
     _polaczony = true;
@@ -165,7 +142,7 @@ void MenadzerSieci::onNowyKlientSerwer(QString adres)
     emit polaczonySygnal(adres, _zdalnyPort, true);
 }
 
-void MenadzerSieci::onKlientSerwRozlaczony(int /*num*/)
+void MenadzerSieci::onKlientSerwRozlaczony(int)
 {
     if (_polaczony) {
         _polaczony = false;
@@ -174,14 +151,11 @@ void MenadzerSieci::onKlientSerwRozlaczony(int /*num*/)
     }
 }
 
-void MenadzerSieci::onNowaRamkaSerwer(int typ, QByteArray payload, int /*numCli*/)
+void MenadzerSieci::onNowaRamkaSerwer(int typ, QByteArray payload, int)
 {
     obsluzRamke(static_cast<TypRamki>(typ), payload);
 }
 
-// =========================================================================
-//  Obsługa odebranej ramki – aktualizacja lokalnej konfiguracji
-// =========================================================================
 void MenadzerSieci::obsluzRamke(TypRamki typ, QByteArray payload)
 {
     switch (typ) {
@@ -214,7 +188,7 @@ void MenadzerSieci::obsluzRamke(TypRamki typ, QByteArray payload)
         int rola;
         QString ip;
         deserializeInfoPolaczenia(payload, rola, ip);
-        _zdalneIP = ip;   // nadpisz na właściwy adres (szczególnie ważne po stronie serwera)
+        _zdalneIP = ip;
         emit konfiguracjaOdebrana(TypRamki::InfoPolaczenia);
         break;
     }

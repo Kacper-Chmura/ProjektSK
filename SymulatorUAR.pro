@@ -15,10 +15,8 @@ SOURCES += \
     W_SIECIOWA/DialogPolaczenia.cpp \
     W_SIECIOWA/MenadzerSieci.cpp \
     W_SIECIOWA/Serializacja.cpp \
-    W_SIECIOWA/clientMW.cpp \
     W_SIECIOWA/myTCPclient.cpp \
     W_SIECIOWA/myTCPserver.cpp \
-    W_SIECIOWA/serverMW.cpp \
     ZarzadzanieCzasem.cpp \
     dialogarx.cpp \
     main.cpp \
@@ -35,10 +33,8 @@ HEADERS += \
     W_SIECIOWA/DialogPolaczenia.h \
     W_SIECIOWA/MenadzerSieci.h \
     W_SIECIOWA/Serializacja.h \
-    W_SIECIOWA/clientMW.h \
     W_SIECIOWA/myTCPclient.h \
     W_SIECIOWA/myTCPserver.h \
-    W_SIECIOWA/serverMW.h \
     ZarzadzanieCzasem.h \
     dialogarx.h \
     json.hpp \

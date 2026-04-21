@@ -8,16 +8,12 @@
 
 using json = nlohmann::json;
 
-// =========================================================================
-//  Konstruktor / destruktor
-// =========================================================================
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
 
-    // ---- warstwa danych / usług ----
     std::vector<double> startA = {-0.4};
     std::vector<double> startB = {0.6};
 
@@ -27,23 +23,19 @@ MainWindow::MainWindow(QWidget *parent)
     connect(manager, &MenadzerSymulacji::noweDataReady,
             this, &MainWindow::onNoweData, Qt::DirectConnection);
 
-    // ---- warstwa sieciowa ----
     menadzerSieci = new MenadzerSieci(manager, this);
     connect(menadzerSieci, &MenadzerSieci::polaczonySygnal,      this, &MainWindow::onPolaczono);
     connect(menadzerSieci, &MenadzerSieci::rozlaczenieZewnetrzne, this, &MainWindow::onRozlaczenieZewnetrzne);
     connect(menadzerSieci, &MenadzerSieci::konfiguracjaOdebrana,  this, &MainWindow::onKonfiguracjaOdebrana);
 
-    // ---- dialogi ----
     arxDialog        = new DialogARX(this);
     dialogPolaczenia = new DialogPolaczenia(this);
 
     arxDialog->setParams(startA, startB, 1, 0.0);
     arxDialog->setOgraniczenia(true, -10.0, 10.0, -10.0, 10.0);
 
-    // ---- wykresy ----
     setupPlots();
 
-    // ---- PID spinboxy ----
     ui->spinKp->setValue(0.5);
     ui->spinTi->setValue(10.0);
     ui->spinTd->setValue(0.0);
@@ -57,7 +49,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->spinTi, &QDoubleSpinBox::editingFinished, this, &MainWindow::updatePidParams);
     connect(ui->spinTd, &QDoubleSpinBox::editingFinished, this, &MainWindow::updatePidParams);
 
-    // ---- Generator ----
     ui->spinFill->setValue(0.5);
     connect(ui->spinAmp,    &QSpinBox::editingFinished,         this, &MainWindow::updateGeneratorParams);
     connect(ui->spinPeriod, &QSpinBox::editingFinished,         this, &MainWindow::updateGeneratorParams);
@@ -66,17 +57,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->comboGenType, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &MainWindow::updateGeneratorParams);
 
-    // ---- Okno obserwacji ----
     ui->spinWindow->setValue(10);
     connect(ui->spinWindow, QOverload<int>::of(&QSpinBox::valueChanged),
             this, &MainWindow::onWindowChanged);
 
-    // ---- Status bar – informacje sieciowe ----
     _labelStatusSieci = new QLabel("  Tryb: stacjonarny  ", this);
     _labelStatusSieci->setFrameStyle(QFrame::Panel | QFrame::Sunken);
     statusBar()->addPermanentWidget(_labelStatusSieci);
 
-    // ---- Przyciski sieciowe ----
     connect(ui->btnPolacz,  &QPushButton::clicked, this, &MainWindow::on_btnPolacz_clicked);
     connect(ui->btnRozlacz, &QPushButton::clicked, this, &MainWindow::on_btnRozlacz_clicked);
     ui->btnRozlacz->setEnabled(false);
@@ -88,12 +76,8 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-// =========================================================================
-//  Wykresy
-// =========================================================================
 void MainWindow::setupPlots()
 {
-    // ---- Wykres główny: wartość zadana + regulowana ----
     ui->plotMain->addGraph();
     ui->plotMain->graph(0)->setPen(QPen(Qt::red));
     ui->plotMain->graph(0)->setName("Wartość Zadana (w)");
@@ -107,19 +91,16 @@ void MainWindow::setupPlots()
     ui->plotMain->legend->setBrush(Qt::NoBrush);
     ui->plotMain->legend->setBorderPen(Qt::NoPen);
 
-    // ---- Uchyb ----
     ui->plotError->addGraph();
     ui->plotError->graph(0)->setPen(QPen(Qt::black));
     ui->plotError->graph(0)->setName("Uchyb (e)");
     ui->plotError->yAxis->setLabel("Uchyb e");
 
-    // ---- Sterowanie ----
     ui->plotControl->addGraph();
     ui->plotControl->graph(0)->setPen(QPen(Qt::darkGreen));
     ui->plotControl->graph(0)->setName("Sterowanie (u)");
     ui->plotControl->yAxis->setLabel("Sterowanie u");
 
-    // ---- Składowe PID ----
     ui->plotPID->addGraph();
     ui->plotPID->graph(0)->setPen(QPen(Qt::green));
     ui->plotPID->graph(0)->setName("P");
@@ -175,9 +156,6 @@ void MainWindow::updatePlots(double t, double y_zad, double y, double u, double 
     }
 }
 
-// =========================================================================
-//  Sloty symulacji
-// =========================================================================
 void MainWindow::onNoweData(double t, double y_zad, double y, double u, double e,
                              RegulatorPID::Skladowe skladowe)
 {
@@ -212,9 +190,6 @@ void MainWindow::on_btnReset_clicked()
     }
 }
 
-// =========================================================================
-//  PID
-// =========================================================================
 void MainWindow::on_btnUpdatePID_clicked()
 {
     double Kp = ui->spinKp->value();
@@ -223,7 +198,6 @@ void MainWindow::on_btnUpdatePID_clicked()
     double Tp = ui->spinTp->value() / 1000.0;
     manager->setNastawyPID(Kp, Ti, Td, -10.0, 10.0, Tp);
 
-    // Jeśli jesteśmy w trybie sieciowym jako regulator – wyślij zmiany
     if (_trybSieciowy && menadzerSieci->getRole() == RolaSieciowa::Regulator)
         menadzerSieci->wyslijKonfiguracjePID();
 }
@@ -244,9 +218,6 @@ void MainWindow::on_comboPidType_currentIndexChanged(int index)
     else            manager->setLiczCalkPID(RegulatorPID::LiczCalk::Wew);
 }
 
-// =========================================================================
-//  ARX dialog
-// =========================================================================
 void MainWindow::on_btnOpenARX_clicked()
 {
     arxDialog->setOgraniczenia(
@@ -262,15 +233,11 @@ void MainWindow::on_btnOpenARX_clicked()
         manager->setOgraniczeniaSterowania(arxDialog->getUMin(), arxDialog->getUMax());
         manager->setOgraniczeniaRegulowanej(arxDialog->getYMin(), arxDialog->getYMax());
 
-        // Wyślij konfigurację ARX do drugiej instancji
         if (_trybSieciowy)
             menadzerSieci->wyslijKonfiguracjeARX();
     }
 }
 
-// =========================================================================
-//  Generator
-// =========================================================================
 void MainWindow::updateGeneratorParams()
 {
     double amp    = ui->spinAmp->value();
@@ -286,14 +253,10 @@ void MainWindow::updateGeneratorParams()
         manager->setParametryGeneratoraProstokatnego(amp, per, fill, offset);
     }
 
-    // Wyślij generator do drugiej instancji
     if (_trybSieciowy && menadzerSieci->getRole() == RolaSieciowa::Regulator)
         menadzerSieci->wyslijKonfiguracjeGeneratora();
 }
 
-// =========================================================================
-//  Interwał / okno
-// =========================================================================
 void MainWindow::onIntervalChanged()
 {
     int    intervalMs = ui->spinTp->value();
@@ -305,12 +268,8 @@ void MainWindow::onIntervalChanged()
 
 void MainWindow::onWindowChanged()
 {
-    // Zmiana okna obserwacji – wykresy dostosują się automatycznie przy kolejnym odświeżeniu
 }
 
-// =========================================================================
-//  Zapis / Odczyt JSON
-// =========================================================================
 void MainWindow::on_btnSave_clicked()
 {
     json j;
@@ -381,13 +340,8 @@ void MainWindow::on_btnLoad_clicked()
     }
 }
 
-// =========================================================================
-//  SIEĆ – nawiązanie / rozłączenie
-// =========================================================================
 void MainWindow::on_btnPolacz_clicked()
 {
-    // Wymagana świadoma akcja: otwarcie dialogu jest pierwszą operacją,
-    // kliknięcie "Połącz" w dialogu jest drugą – zabezpieczenie przed miss-click
     if (dialogPolaczenia->exec() != QDialog::Accepted)
         return;
 
@@ -416,7 +370,6 @@ void MainWindow::on_btnPolacz_clicked()
 
 void MainWindow::on_btnRozlacz_clicked()
 {
-    // Druga świadoma operacja: potwierdzenie przed rozłączeniem
     int ret = QMessageBox::question(
         this, "Rozłączenie",
         "Czy na pewno chcesz przełączyć w tryb stacjonarny?\n"
@@ -472,18 +425,14 @@ void MainWindow::onRozlaczenieZewnetrzne()
 
 void MainWindow::onKonfiguracjaOdebrana(TypRamki typ)
 {
-    // Aktualizujemy GUI na podstawie odebranych danych
     switch (typ) {
     case TypRamki::PID:
-        // Instancja obiektu nie potrzebuje aktualizować GUI PID
-        // ale aktualizujemy, żeby po rozłączeniu mieć spójną konfigurację
         odswiezGUIPID();
         break;
     case TypRamki::Generator:
         odswiezGUIGenerator();
         break;
     case TypRamki::InfoPolaczenia:
-        // IP jest już zapisane w menadzerSieci – aktualizujemy statusbar
         if (_trybSieciowy) {
             QString ip   = menadzerSieci->getZdalneIP();
             int    port  = menadzerSieci->getZdalnyPort();
@@ -500,13 +449,9 @@ void MainWindow::onKonfiguracjaOdebrana(TypRamki typ)
     }
 }
 
-// =========================================================================
-//  Blokowanie / odblokowywanie kontrolek
-// =========================================================================
 void MainWindow::zastosujBlokadyTrybuSieciowego(RolaSieciowa rola)
 {
     if (rola == RolaSieciowa::Obiekt) {
-        // Obiekt: blokujemy WSZYSTKO poza ARX i trybem sieciowym
         ui->btnStart->setEnabled(false);
         ui->btnStop->setEnabled(false);
         ui->btnReset->setEnabled(false);
@@ -524,11 +469,9 @@ void MainWindow::zastosujBlokadyTrybuSieciowego(RolaSieciowa rola)
         ui->comboGenType->setEnabled(false);
         ui->btnSave->setEnabled(false);
         ui->btnLoad->setEnabled(false);
-        // ARX i rozłączenie – zostawiamy odblokowane
         ui->btnOpenARX->setEnabled(true);
         ui->btnRozlacz->setEnabled(true);
     } else {
-        // Regulator: wszystko aktywne POZA ARX
         ui->btnStart->setEnabled(true);
         ui->btnStop->setEnabled(true);
         ui->btnReset->setEnabled(true);
@@ -546,7 +489,6 @@ void MainWindow::zastosujBlokadyTrybuSieciowego(RolaSieciowa rola)
         ui->comboGenType->setEnabled(true);
         ui->btnSave->setEnabled(true);
         ui->btnLoad->setEnabled(true);
-        // ARX zablokowane po stronie regulatora
         ui->btnOpenARX->setEnabled(false);
         ui->btnRozlacz->setEnabled(true);
     }
@@ -574,13 +516,9 @@ void MainWindow::odblokujWszystko()
     ui->btnOpenARX->setEnabled(true);
 }
 
-// =========================================================================
-//  Odświeżanie GUI po odebraniu konfiguracji
-// =========================================================================
 void MainWindow::odswiezGUIPID()
 {
     const RegulatorPID* pid = manager->getPID();
-    // Blokujemy sygnały żeby nie wywołać ponownego wysyłania
     ui->spinKp->blockSignals(true);
     ui->spinTi->blockSignals(true);
     ui->spinTd->blockSignals(true);
@@ -615,9 +553,6 @@ void MainWindow::odswiezGUIGenerator()
     ui->spinOffset->blockSignals(false);
 }
 
-// =========================================================================
-//  Sloty do lokalnych zmian konfiguracji (do użycia w przyszłości)
-// =========================================================================
 void MainWindow::onLocalPidChanged()     { if (_trybSieciowy) menadzerSieci->wyslijKonfiguracjePID(); }
 void MainWindow::onLocalArxChanged()     { if (_trybSieciowy) menadzerSieci->wyslijKonfiguracjeARX(); }
 void MainWindow::onLocalGeneratorChanged(){ if (_trybSieciowy) menadzerSieci->wyslijKonfiguracjeGeneratora(); }

@@ -73,6 +73,7 @@ void MenadzerSymulacji::stopSymulacji() {
     _czasownik->stop();
     // Niepotrzebnie: _regulator.resetCalki();
 }
+
 bool MenadzerSymulacji::czySymulacjaUruchomiona() const { return _symulacja_uruchomiona; }
 
 void MenadzerSymulacji::setTypGeneratora(TypGeneratora typ) { _aktywny_generator = typ; }

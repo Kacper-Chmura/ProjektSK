@@ -33,7 +33,7 @@ private:
     QString    m_ipAddress = "127.0.0.1";
     int        m_port      = 12345;
 
-    QByteArray m_buforOdbioru;  // bufor na fragmenty TCP
+    QByteArray m_buforOdbioru;
 };
 
 #endif // MYTCPCLIENT_H

@@ -3,7 +3,7 @@
 
 RegulatorPID::RegulatorPID(double Kp, double Ti, double Td, double Tp, double U_min, double U_max) {
     ustawParametry(Kp, Ti, Td, U_min, U_max, Tp);
-    _liczCalk = LiczCalk::Zew; // Domyślny tryb
+    _liczCalk = LiczCalk::Zew;
     resetPamieci();
 }
 

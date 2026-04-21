@@ -6,12 +6,11 @@
 
 namespace Ui { class DialogPolaczenia; }
 
-// Wynik dialogu
 struct KonfiguracjaPolaczenia {
     bool  czyJestSerwer = true;
     int   port          = 12345;
     QString adresIP     = "127.0.0.1";
-    int   rola          = 0;   // 0 = Regulator, 1 = Obiekt
+    int   rola          = 0;
 };
 
 class DialogPolaczenia : public QDialog
