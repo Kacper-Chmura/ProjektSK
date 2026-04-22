@@ -5,6 +5,7 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QNetworkInterface>
+#include "./ZarzadzanieCzasem.h"
 
 using json = nlohmann::json;
 
@@ -65,8 +66,6 @@ MainWindow::MainWindow(QWidget *parent)
     _labelStatusSieci->setFrameStyle(QFrame::Panel | QFrame::Sunken);
     statusBar()->addPermanentWidget(_labelStatusSieci);
 
-    //connect(ui->btnPolacz,  &QPushButton::clicked, this, &MainWindow::on_btnPolacz_clicked);
-    //connect(ui->btnRozlacz, &QPushButton::clicked, this, &MainWindow::on_btnRozlacz_clicked);
     ui->btnRozlacz->setEnabled(false);
 }
 
@@ -127,7 +126,7 @@ void MainWindow::setupPlots()
 }
 
 void MainWindow::updatePlots(double t, double y_zad, double y, double u, double e,
-                              RegulatorPID::Skladowe pid)
+                             RegulatorPID::Skladowe pid)
 {
     ui->plotMain->graph(0)->addData(t, y_zad);
     ui->plotMain->graph(1)->addData(t, y);
@@ -137,14 +136,18 @@ void MainWindow::updatePlots(double t, double y_zad, double y, double u, double 
     ui->plotPID->graph(1)->addData(t, pid.I);
     ui->plotPID->graph(2)->addData(t, pid.D);
 
-    double window = ui->spinWindow->value();
+    // Zabezpieczenie przed window = 0
+    double window = qMax(1.0, (double)ui->spinWindow->value());
 
     QVector<QCustomPlot*> plots = {ui->plotMain, ui->plotError, ui->plotControl, ui->plotPID};
     for (auto plot : plots) {
-        plot->xAxis->setRange(t, window, Qt::AlignRight);
+        // Oś X przesuwa się w prawo, zapewniając miejsce po prawej aż czas t przekroczy wielkość okna
+        plot->xAxis->setRange(qMax(0.0, t - window), qMax(window, t));
 
+        // Trzymaj szeroki bufor danych (np. 1000 sekund) zamiast usuwać je dynamicznie wraz z oknem
+        // Dzięki temu po powiększeniu okna w locie, wykres nie będzie miał "pustej dziury"
         for (int i = 0; i < plot->graphCount(); ++i)
-            plot->graph(i)->data()->removeBefore(t - window - 1.0);
+            plot->graph(i)->data()->removeBefore(t - 1000.0);
 
         plot->yAxis->rescale();
         QCPRange range = plot->yAxis->range();
@@ -263,7 +266,10 @@ void MainWindow::onIntervalChanged()
     double Tp         = intervalMs / 1000.0;
     manager->getZarzadzanieCzasem()->setInterwalMs(intervalMs);
     manager->setNastawyPID(ui->spinKp->value(), ui->spinTi->value(),
-                            ui->spinTd->value(), -10.0, 10.0, Tp);
+                           ui->spinTd->value(), -10.0, 10.0, Tp);
+
+    if (_trybSieciowy && menadzerSieci->getRole() == RolaSieciowa::Regulator)
+        menadzerSieci->wyslijKonfiguracjePID();
 }
 
 void MainWindow::onWindowChanged()
@@ -525,17 +531,22 @@ void MainWindow::odswiezGUIPID()
     ui->spinKp->blockSignals(true);
     ui->spinTi->blockSignals(true);
     ui->spinTd->blockSignals(true);
+    ui->spinTp->blockSignals(true);
+
     ui->spinKp->setValue(pid->getKp());
     ui->spinTi->setValue(pid->getTi());
     ui->spinTd->setValue(pid->getTd());
+    ui->spinTp->setValue(pid->getTp() * 1000.0);
+
     ui->spinKp->blockSignals(false);
     ui->spinTi->blockSignals(false);
     ui->spinTd->blockSignals(false);
+    ui->spinTp->blockSignals(false);
 }
 
 void MainWindow::odswiezGUIGenerator()
 {
-    int typGen = static_cast<int>(manager->getTypGeneratora());
+    int typGenGUI = (manager->getTypGeneratora() == MenadzerSymulacji::TypGeneratora::Sinusoidalny) ? 1 : 0;
 
     ui->comboGenType->blockSignals(true);
     ui->spinAmp->blockSignals(true);
@@ -543,7 +554,7 @@ void MainWindow::odswiezGUIGenerator()
     ui->spinFill->blockSignals(true);
     ui->spinOffset->blockSignals(true);
 
-    ui->comboGenType->setCurrentIndex(typGen);
+    ui->comboGenType->setCurrentIndex(typGenGUI);
     ui->spinAmp->setValue(static_cast<int>(manager->getGenAmplituda()));
     ui->spinPeriod->setValue(static_cast<int>(manager->getGenOkres()));
     ui->spinFill->setValue(manager->getGenWypelnienie());

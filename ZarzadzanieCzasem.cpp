@@ -12,13 +12,13 @@ ZarzadzanieCzasem::ZarzadzanieCzasem(MenadzerSymulacji* manager, QObject *parent
     connect(_timer, &QTimer::timeout, this, &ZarzadzanieCzasem::onTimeout);
 }
 
-void ZarzadzanieCzasem::setInterwalMs(int ms)
-{
-    if (ms < 10 || ms > 1000) return;
+void ZarzadzanieCzasem::setInterwalMs(int ms) {
+    // Twoja zmienna przechowująca interwał
     _intervalMs = ms;
+
+    // Zapewnienie aktualizacji dla działającej symulacji
     if (_timer->isActive()) {
-        _timer->stop();
-        _timer->start(ms);
+        _timer->setInterval(ms);
     }
 }
 
