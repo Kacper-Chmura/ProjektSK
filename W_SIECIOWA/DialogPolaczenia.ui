@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>398</width>
-    <height>282</height>
+    <width>492</width>
+    <height>309</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -29,7 +29,7 @@
       <item>
        <widget class="QRadioButton" name="radioRegulator">
         <property name="text">
-         <string>Regulator (zarządza symulacją)</string>
+         <string>Regulator</string>
         </property>
         <property name="checked">
          <bool>true</bool>
@@ -39,7 +39,7 @@
       <item>
        <widget class="QRadioButton" name="radioObiekt">
         <property name="text">
-         <string>Obiekt (ARX)</string>
+         <string>Obiekt ARX</string>
         </property>
        </widget>
       </item>
@@ -57,7 +57,7 @@
         <item>
          <widget class="QRadioButton" name="radioSerwer">
           <property name="text">
-           <string>Serwer (czekaj na połączenie)</string>
+           <string>Serwer</string>
           </property>
           <property name="checked">
            <bool>true</bool>
@@ -67,7 +67,7 @@
         <item>
          <widget class="QRadioButton" name="radioKlient">
           <property name="text">
-           <string>Klient (połącz z serwerem)</string>
+           <string>Klient</string>
           </property>
          </widget>
         </item>
@@ -145,7 +145,7 @@
 QPushButton:hover { background-color: #157347; }</string>
        </property>
        <property name="text">
-        <string>Połącz / Nasłuchuj</string>
+        <string>Połącz</string>
        </property>
        <property name="default">
         <bool>true</bool>

@@ -8,8 +8,6 @@ DialogPolaczenia::DialogPolaczenia(QWidget* parent)
     setModal(true);
 
     connect(ui->radioSerwer, &QRadioButton::toggled, this, &DialogPolaczenia::on_radioSerwer_toggled);
-    //connect(ui->btnPotwierdz, &QPushButton::clicked, this, &DialogPolaczenia::on_btnPotwierdz_clicked);
-    //connect(ui->btnAnuluj,    &QPushButton::clicked, this, &DialogPolaczenia::on_btnAnuluj_clicked);
 }
 
 
