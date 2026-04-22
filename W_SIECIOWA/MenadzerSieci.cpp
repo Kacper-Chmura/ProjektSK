@@ -1,6 +1,7 @@
 #include "MenadzerSieci.h"
 #include "Serializacja.h"
 #include "../MenadzerSymulacji.h"
+#include "ZarzadzanieCzasem.h"
 #include <QDataStream>
 #include <QNetworkInterface>
 
@@ -162,6 +163,9 @@ void MenadzerSieci::obsluzRamke(TypRamki typ, QByteArray payload)
     case TypRamki::PID: {
         RegulatorPID* pid = _manager->getPID();
         deserializePID(payload, *pid);
+
+        _manager->getZarzadzanieCzasem()->setInterwalMs(pid->getTp() * 1000.0);
+
         emit konfiguracjaOdebrana(TypRamki::PID);
         break;
     }
@@ -178,8 +182,12 @@ void MenadzerSieci::obsluzRamke(TypRamki typ, QByteArray payload)
 
         auto tg = static_cast<MenadzerSymulacji::TypGeneratora>(typGen);
         _manager->setTypGeneratora(tg);
-        _manager->setParametryGeneratoraProstokatnego(pg.amplituda, pg.okres, pg.wypelnienie, pg.skladowaStala);
-        _manager->setParametryGeneratoraSinusoidalnego(pg.amplituda, pg.okres, pg.skladowaStala);
+
+        if (tg == MenadzerSymulacji::TypGeneratora::Sinusoidalny) {
+            _manager->setParametryGeneratoraSinusoidalnego(pg.amplituda, pg.okres, pg.skladowaStala);
+        } else {
+            _manager->setParametryGeneratoraProstokatnego(pg.amplituda, pg.okres, pg.wypelnienie, pg.skladowaStala);
+        }
 
         emit konfiguracjaOdebrana(TypRamki::Generator);
         break;
