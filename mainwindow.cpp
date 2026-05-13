@@ -395,10 +395,15 @@ void MainWindow::on_btnRozlacz_clicked()
 
 void MainWindow::onPolaczono(QString ip, int port, bool jakoSerwer)
 {
+
     _trybSieciowy = true;
 
     RolaSieciowa rola = menadzerSieci->getRole();
     zastosujBlokadyTrybuSieciowego(rola);
+    MenadzerSymulacji::TrybPracy tryb = (rola == RolaSieciowa::Regulator)
+                                            ? MenadzerSymulacji::TrybPracy::SiecRegulator
+                                            : MenadzerSymulacji::TrybPracy::SiecObiekt;
+    manager->setTrybPracy(tryb);
 
     QString rolaNazwa = (rola == RolaSieciowa::Regulator) ? "Regulator" : "Obiekt";
     QString trybNazwa = jakoSerwer ? "Serwer" : "Klient";
@@ -415,6 +420,7 @@ void MainWindow::onPolaczono(QString ip, int port, bool jakoSerwer)
 
 void MainWindow::onRozlaczenieZewnetrzne()
 {
+    manager->setTrybPracy(MenadzerSymulacji::TrybPracy::Stacjonarny);
     _trybSieciowy = false;
     odblokujWszystko();
 

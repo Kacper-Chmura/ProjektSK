@@ -121,3 +121,31 @@ void deserializeInfoPolaczenia(QByteArray& buf, int& outRola, QString& outIP) {
     in >> rola >> outIP;
     outRola = (int)rola;
 }
+
+QByteArray serializeSymulacjaRegulator(double czas, double w, double u) {
+    QByteArray buf;
+    QDataStream out(&buf, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << czas << w << u;
+    return buf;
+}
+
+void deserializeSymulacjaRegulator(QByteArray& buf, double& czas, double& w, double& u) {
+    QDataStream in(&buf, QIODevice::ReadOnly);
+    in.setVersion(QDataStream::Qt_6_0);
+    in >> czas >> w >> u;
+}
+
+QByteArray serializeSymulacjaObiekt(double czas, double y) {
+    QByteArray buf;
+    QDataStream out(&buf, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << czas << y;
+    return buf;
+}
+
+void deserializeSymulacjaObiekt(QByteArray& buf, double& czas, double& y) {
+    QDataStream in(&buf, QIODevice::ReadOnly);
+    in.setVersion(QDataStream::Qt_6_0);
+    in >> czas >> y;
+}

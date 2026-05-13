@@ -22,24 +22,56 @@ void MenadzerSymulacji::wykonajKrokSymulacji(double czas)
 {
     if (!_symulacja_uruchomiona) return;
 
+    if (_trybPracy == TrybPracy::SiecObiekt) {
+        return;
+    }
+
     double wartoscZadana = 0.0;
     if (_aktywny_generator == TypGeneratora::Sinusoidalny) {
         wartoscZadana = _gen_sinusoidalny.generuj(czas);
     } else {
-        wartoscZadana = _gen_prostokatny. generuj(czas);
+        wartoscZadana = _gen_prostokatny.generuj(czas);
     }
     _ostatnia_wartosc_zadana = wartoscZadana;
 
-    double y = _symulator.symuluj(wartoscZadana);
-    _ostatnia_wartosc_regulowana = y;
+    if (_trybPracy == TrybPracy::Stacjonarny) {
+        double y = _symulator.symuluj(wartoscZadana);
+        _ostatnia_wartosc_regulowana = y;
+        double u = _symulator.getSterowanie();
+        double e = _symulator.getUchyb();
+        auto skladowe = _regulator.getOstatnieSkladowe();
+        emit noweDataReady(czas, wartoscZadana, y, u, e, skladowe);
 
-    double u = _symulator.getSterowanie();
-    double e = _symulator.getUchyb();
-    auto skladowe = _regulator.getOstatnieSkladowe();
+    } else if (_trybPracy == TrybPracy::SiecRegulator) {
+        double uchyb = wartoscZadana - _ostatnia_wartosc_regulowana;
+        double u = _regulator.symuluj(uchyb);
 
-    emit noweDataReady(czas, wartoscZadana, y, u, e, skladowe);
+        emit wyslijRamkeRegulatora(czas, wartoscZadana, u);
+
+        emit noweDataReady(czas, wartoscZadana, _ostatnia_wartosc_regulowana, u, uchyb, _regulator.getOstatnieSkladowe());
+    }
 }
 
+void MenadzerSymulacji::setTrybPracy(TrybPracy tryb) {
+    _trybPracy = tryb;
+    if (_trybPracy == TrybPracy::Stacjonarny) {
+        _symulator.setYOpozniona(_ostatnia_wartosc_regulowana);
+    }
+}
+void MenadzerSymulacji::aktualizujZSieciObiekt(double y) {
+    _ostatnia_wartosc_regulowana = y;
+}
+
+void MenadzerSymulacji::aktualizujZSieciRegulator(double czas, double w, double u) {
+    double y = _model.symuluj(u);
+    _ostatnia_wartosc_regulowana = y;
+    _ostatnia_wartosc_zadana = w;
+
+    emit wyslijRamkeObiektu(czas, y);
+
+    RegulatorPID::Skladowe puste = {0, 0, 0};
+    emit noweDataReady(czas, w, y, u, 0, puste);
+}
 RegulatorPID::Skladowe MenadzerSymulacji::getSkladowePID() const {
     return _regulator.getOstatnieSkladowe();
 }

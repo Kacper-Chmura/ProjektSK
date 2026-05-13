@@ -18,6 +18,16 @@ MenadzerSieci::MenadzerSieci(MenadzerSymulacji* manager, QObject* parent)
     connect(_serwer, &MyTCPServer::newClientConnected, this, &MenadzerSieci::onNowyKlientSerwer);
     connect(_serwer, &MyTCPServer::clientDisconnetced, this, &MenadzerSieci::onKlientSerwRozlaczony);
     connect(_serwer, &MyTCPServer::nowaRamkaOd,        this, &MenadzerSieci::onNowaRamkaSerwer);
+
+    connect(_manager, &MenadzerSymulacji::wyslijRamkeRegulatora, this, [this](double czas, double w, double u){
+        QByteArray buf = serializeSymulacjaRegulator(czas, w, u);
+        wyslijRamke(static_cast<quint8>(TypRamki::SymulacjaRegulator), buf);
+    });
+
+    connect(_manager, &MenadzerSymulacji::wyslijRamkeObiektu, this, [this](double czas, double y){
+        QByteArray buf = serializeSymulacjaObiekt(czas, y);
+        wyslijRamke(static_cast<quint8>(TypRamki::SymulacjaObiekt), buf);
+    });
 }
 
 bool MenadzerSieci::startujSerwer(int port)
@@ -198,6 +208,18 @@ void MenadzerSieci::obsluzRamke(TypRamki typ, QByteArray payload)
         deserializeInfoPolaczenia(payload, rola, ip);
         _zdalneIP = ip;
         emit konfiguracjaOdebrana(TypRamki::InfoPolaczenia);
+        break;
+    }
+    case TypRamki::SymulacjaRegulator: {
+        double czas, w, u;
+        deserializeSymulacjaRegulator(payload, czas, w, u);
+        _manager->aktualizujZSieciRegulator(czas, w, u);
+        break;
+    }
+    case TypRamki::SymulacjaObiekt: {
+        double czas, y;
+        deserializeSymulacjaObiekt(payload, czas, y);
+        _manager->aktualizujZSieciObiekt(y);
         break;
     }
     default:

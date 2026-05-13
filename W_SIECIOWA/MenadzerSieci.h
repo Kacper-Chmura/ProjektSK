@@ -8,11 +8,13 @@
 class MenadzerSymulacji;
 
 enum class TypRamki : quint8 {
-    PID           = 0x01,
-    ARX           = 0x02,
-    Generator     = 0x03,
-    InfoPolaczenia = 0x04,
-    Potwierdzenie = 0x05,
+    PID                = 0x01,
+    ARX                = 0x02,
+    Generator          = 0x03,
+    InfoPolaczenia     = 0x04,
+    Potwierdzenie      = 0x05,
+    SymulacjaRegulator = 0x06,
+    SymulacjaObiekt    = 0x07
 };
 
 enum class RolaSieciowa {

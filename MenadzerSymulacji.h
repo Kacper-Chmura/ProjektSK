@@ -49,6 +49,11 @@ public:
     void setOgraniczeniaSterowania(double min, double max);
     void setOgraniczeniaRegulowanej(double min, double max);
 
+    enum class TrybPracy { Stacjonarny, SiecRegulator, SiecObiekt };
+    void setTrybPracy(TrybPracy tryb);
+
+    void aktualizujZSieciObiekt(double y);
+    void aktualizujZSieciRegulator(double czas, double w, double u);
     ZarzadzanieCzasem* getZarzadzanieCzasem() { return _czasownik; }
 
     bool getOgraniczeniaARX() const { return _model. ograniczenia(); }
@@ -69,7 +74,8 @@ public:
 signals:
     void noweDataReady(double czas, double y_zad, double y, double u, double e,
                        RegulatorPID::Skladowe skladowe);
-
+    void wyslijRamkeRegulatora(double czas, double w, double u);
+    void wyslijRamkeObiektu(double czas, double y);
 private:
     RegulatorPID _regulator;
     ModelARX _model;
@@ -84,4 +90,5 @@ private:
     bool _symulacja_uruchomiona;
 
     ZarzadzanieCzasem* _czasownik;
+    TrybPracy _trybPracy = TrybPracy::Stacjonarny;
 };

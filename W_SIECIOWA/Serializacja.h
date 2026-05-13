@@ -30,4 +30,9 @@ void       deserializeGenerator(QByteArray& buf, int& outTypGen, ParamyGenerator
 QByteArray serializeInfoPolaczenia(int rola, const QString& lokalneIP);
 void       deserializeInfoPolaczenia(QByteArray& buf, int& outRola, QString& outIP);
 
+QByteArray serializeSymulacjaRegulator(double czas, double w, double u);
+void       deserializeSymulacjaRegulator(QByteArray& buf, double& czas, double& w, double& u);
+
+QByteArray serializeSymulacjaObiekt(double czas, double y);
+void       deserializeSymulacjaObiekt(QByteArray& buf, double& czas, double& y);
 #endif // SERIALIZACJA_H

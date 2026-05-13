@@ -11,6 +11,7 @@ public:
     double getOpoznionaWartoscZmierzona() const { return _y_opozniona; }
     double getUchyb() const { return _uchyb; }
     double getSterowanie() const { return _arx.getUzasymulowane(); }
+    void setYOpozniona(double y) { _y_opozniona = y; }
 
 private:
     RegulatorPID& _regulator;
