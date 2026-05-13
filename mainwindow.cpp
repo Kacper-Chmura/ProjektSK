@@ -141,24 +141,33 @@ void MainWindow::updatePlots(double t, double y_zad, double y, double u, double 
     ui->plotPID->graph(1)->addData(t, pid.I);
     ui->plotPID->graph(2)->addData(t, pid.D);
 
-    // Zabezpieczenie przed window = 0
     double window = qMax(1.0, (double)ui->spinWindow->value());
 
     QVector<QCustomPlot*> plots = {ui->plotMain, ui->plotError, ui->plotControl, ui->plotPID};
     for (auto plot : plots) {
-        // Oś X przesuwa się w prawo, zapewniając miejsce po prawej aż czas t przekroczy wielkość okna
         plot->xAxis->setRange(qMax(0.0, t - window), qMax(window, t));
 
-        // Trzymaj szeroki bufor danych (np. 1000 sekund) zamiast usuwać je dynamicznie wraz z oknem
-        // Dzięki temu po powiększeniu okna w locie, wykres nie będzie miał "pustej dziury"
         for (int i = 0; i < plot->graphCount(); ++i)
             plot->graph(i)->data()->removeBefore(t - 1000.0);
 
-        plot->yAxis->rescale();
-        QCPRange range = plot->yAxis->range();
-        double center = range.center();
-        double size   = (range.size() == 0.0) ? 1.0 : range.size();
-        plot->yAxis->setRange(center - size * 0.6, center + size * 0.6);
+        bool maRealnedane = false;
+        for (int i = 0; i < plot->graphCount(); ++i) {
+            auto data = plot->graph(i)->data();
+            for (auto it = data->begin(); it != data->end(); ++it) {
+                if (std::abs(it->value) > 1e-9) { maRealnedane = true; break; }
+            }
+            if (maRealnedane) break;
+        }
+
+        if (maRealnedane) {
+            plot->yAxis->rescale();
+            QCPRange range = plot->yAxis->range();
+            double center = range.center();
+            double size   = (range.size() < 1e-6) ? 1.0 : range.size();
+            plot->yAxis->setRange(center - size * 0.6, center + size * 0.6);
+        } else {
+            plot->yAxis->setRange(-1.0, 1.0);
+        }
 
         plot->replot(QCustomPlot::rpQueuedReplot);
     }
@@ -391,11 +400,18 @@ void MainWindow::on_btnRozlacz_clicked()
 
     if (ret != QMessageBox::Yes) return;
 
+    bool bylAktywny = manager->czySymulacjaUruchomiona();
+
     menadzerSieci->rozlacz();
-
     _trybSieciowy = false;
-    odblokujWszystko();
 
+    manager->setTrybPracy(MenadzerSymulacji::TrybPracy::Stacjonarny);
+
+    if (bylAktywny) {
+        manager->startSymulacji();
+    }
+
+    odblokujWszystko();
     ui->btnPolacz->setEnabled(true);
     ui->btnRozlacz->setEnabled(false);
     _labelStatusSieci->setText("  Tryb: stacjonarny  ");
@@ -415,10 +431,11 @@ void MainWindow::onPolaczono(QString ip, int port, bool jakoSerwer)
     if (rola == RolaSieciowa::Regulator) {
         updatePidParams();
         updateGeneratorParams();
+    } else {
+        manager->ustawAktywny(true);
     }
 
     zastosujBlokadyTrybuSieciowego(rola);
-
     menadzerSieci->wyslijPelnaKonfiguracje();
 
     QString rolaNazwa = (rola == RolaSieciowa::Regulator) ? "Regulator" : "Obiekt";
@@ -436,7 +453,14 @@ void MainWindow::onPolaczono(QString ip, int port, bool jakoSerwer)
 
 void MainWindow::onRozlaczenieZewnetrzne()
 {
+    bool bylAktywny = manager->czySymulacjaUruchomiona();
+
     manager->setTrybPracy(MenadzerSymulacji::TrybPracy::Stacjonarny);
+
+    if (bylAktywny) {
+        manager->startSymulacji();
+    }
+
     _trybSieciowy = false;
     odblokujWszystko();
 

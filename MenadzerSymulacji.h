@@ -24,6 +24,7 @@ public:
     void stopSymulacji();
     void resetSymulacji();
     bool czySymulacjaUruchomiona() const;
+    void ustawAktywny(bool aktywny) { _symulacja_uruchomiona = aktywny; }
 
     double getWartoscZadana() const;
     double getWartoscRegulowana() const { return _ostatnia_wartosc_regulowana; }

@@ -9,6 +9,10 @@ MyTCPServer::MyTCPServer(QObject *parent) : QObject(parent), m_server(this)
 }
 
 bool MyTCPServer::startListening(int port) {
+    if (m_server.isListening()) {
+        m_server.close();
+    }
+
     m_port = port;
     m_isListening = m_server.listen(QHostAddress::Any, port);
     return m_isListening;
