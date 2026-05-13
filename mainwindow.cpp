@@ -191,8 +191,11 @@ void MainWindow::on_btnReset_clicked()
             plot->graph(i)->data()->clear();
         plot->replot();
     }
-}
 
+    if (_trybSieciowy && menadzerSieci->getRole() == RolaSieciowa::Regulator) {
+        menadzerSieci->wyslijReset();
+    }
+}
 void MainWindow::on_btnUpdatePID_clicked()
 {
     double Kp = ui->spinKp->value();
@@ -456,6 +459,16 @@ void MainWindow::onKonfiguracjaOdebrana(TypRamki typ)
             _labelStatusSieci->setText(
                 QString("  [%1/%2] Połączono z: %3 (port %4)  ")
                     .arg(rola).arg(tryb).arg(ip).arg(port));
+        }
+        break;
+    case TypRamki::Reset:
+        manager->resetSymulacji();
+        manager->resetPamieciPID();
+
+        for (auto plot : {ui->plotMain, ui->plotError, ui->plotControl, ui->plotPID}) {
+            for (int i = 0; i < plot->graphCount(); ++i)
+                plot->graph(i)->data()->clear();
+            plot->replot();
         }
         break;
     default:

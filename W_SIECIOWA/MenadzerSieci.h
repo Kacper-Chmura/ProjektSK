@@ -14,7 +14,8 @@ enum class TypRamki : quint8 {
     InfoPolaczenia     = 0x04,
     Potwierdzenie      = 0x05,
     SymulacjaRegulator = 0x06,
-    SymulacjaObiekt    = 0x07
+    SymulacjaObiekt    = 0x07,
+    Reset              = 0x08
 };
 
 enum class RolaSieciowa {
@@ -47,7 +48,7 @@ public:
     QString getZdalneIP() const { return _zdalneIP; }
     int     getZdalnyPort() const { return _zdalnyPort; }
     bool    czyJestSerwerem() const { return _czyJestSerwer; }
-
+    void wyslijReset();
 signals:
     void polaczonySygnal(QString zdalneIP, int zdalnyPort, bool jakoSerwer);
     void rozlaczenieZewnetrzne();

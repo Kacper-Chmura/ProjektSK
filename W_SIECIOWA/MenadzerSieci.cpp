@@ -222,7 +222,16 @@ void MenadzerSieci::obsluzRamke(TypRamki typ, QByteArray payload)
         _manager->aktualizujZSieciObiekt(y);
         break;
     }
+    case TypRamki::Reset: {
+        emit konfiguracjaOdebrana(TypRamki::Reset);
+        break;
+    }
     default:
         break;
     }
+}
+void MenadzerSieci::wyslijReset()
+{
+    QByteArray buf;
+    wyslijRamke(static_cast<quint8>(TypRamki::Reset), buf);
 }
