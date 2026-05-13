@@ -57,13 +57,13 @@ double RegulatorPID::symuluj(double uchyb) {
     // 1. Człon Proporcjonalny (P)
     double P = _Kp * uchyb;
 
-    // 2. Człon Różniczkujący (D) - Postać idealna (wymnożenie przez Kp)
+    // 2. Człon Różniczkujący (D) - bez wymnażania przez Kp
     double D = 0.0;
     if (_Tp > EPS) {
-        D = _Kp * _Td * (uchyb - _Uchyb_poprz) / _Tp;
+        D = _Td * (uchyb - _Uchyb_poprz) / _Tp;
     }
 
-    // 3. Człon Całkujący (I) - Postać idealna (wymnożenie przez Kp)
+    // 3. Człon Całkujący (I) - bez wymnażania przez Kp
     double I_tent = 0.0;
     double S_tent = 0.0;
 
@@ -71,10 +71,10 @@ double RegulatorPID::symuluj(double uchyb) {
         if (_liczCalk == LiczCalk::Wew) {
             double przyrost = (uchyb * _Tp) / _Ti;
             S_tent = _Suma_uchyb_wew + przyrost;
-            I_tent = _Kp * S_tent;
+            I_tent = S_tent;
         } else {
             S_tent = _Suma_uchyb_zew + (uchyb * _Tp);
-            I_tent = _Kp * (S_tent / _Ti);
+            I_tent = S_tent / _Ti;
         }
     } else {
         I_tent = 0.0;
@@ -90,7 +90,7 @@ double RegulatorPID::symuluj(double uchyb) {
     if (u_satur > _U_max) u_satur = _U_max;
     else if (u_satur < _U_min) u_satur = _U_min;
 
-    // Anti-windup (warunkowe zamrożenie całki)
+    // Anti-windup
     bool nasycenie = (std::abs(u_satur - u_niesatur) > EPS);
     if (!nasycenie) {
         if (_liczCalk == LiczCalk::Wew) _Suma_uchyb_wew = S_tent;
