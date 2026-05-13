@@ -70,6 +70,7 @@ private:
 
     void odswiezGUIPID();
     void odswiezGUIGenerator();
+    void odswiezGUIARX();
 
     bool _trybSieciowy = false;
 };

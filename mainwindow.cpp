@@ -223,15 +223,11 @@ void MainWindow::on_comboPidType_currentIndexChanged(int index)
 
 void MainWindow::on_btnOpenARX_clicked()
 {
-    arxDialog->setOgraniczenia(
-        manager->getOgraniczeniaARX(),
-        manager->getUMinARX(), manager->getUMaxARX(),
-        manager->getYMinARX(), manager->getYMaxARX()
-        );
+    odswiezGUIARX();
 
     if (arxDialog->exec() == QDialog::Accepted) {
         manager->setParametryARX(arxDialog->getA(), arxDialog->getB(),
-                                  arxDialog->getK(), arxDialog->getPozSz());
+                                 arxDialog->getK(), arxDialog->getPozSz());
         manager->setOgraniczeniaARX(arxDialog->getOgraniczeniaWlaczone());
         manager->setOgraniczeniaSterowania(arxDialog->getUMin(), arxDialog->getUMax());
         manager->setOgraniczeniaRegulowanej(arxDialog->getYMin(), arxDialog->getYMax());
@@ -441,6 +437,9 @@ void MainWindow::onKonfiguracjaOdebrana(TypRamki typ)
     case TypRamki::Generator:
         odswiezGUIGenerator();
         break;
+    case TypRamki::ARX:
+        odswiezGUIARX();
+        break;
     case TypRamki::InfoPolaczenia:
         if (_trybSieciowy) {
             QString ip   = menadzerSieci->getZdalneIP();
@@ -455,6 +454,19 @@ void MainWindow::onKonfiguracjaOdebrana(TypRamki typ)
         break;
     default:
         break;
+    }
+}
+
+void MainWindow::odswiezGUIARX()
+{
+    ModelARX* arx = manager->getARX();
+    if (arx) {
+        arxDialog->setParams(arx->getA(), arx->getB(), arx->getk(), arx->getpozsz());
+        arxDialog->setOgraniczenia(
+            arx->ograniczenia(),
+            arx->getUMin(), arx->getUMax(),
+            arx->getYMin(), arx->getYMax()
+            );
     }
 }
 
