@@ -398,27 +398,24 @@ void MainWindow::on_btnRozlacz_clicked()
 
 void MainWindow::onPolaczono(QString ip, int port, bool jakoSerwer)
 {
-
     _trybSieciowy = true;
-
     RolaSieciowa rola = menadzerSieci->getRole();
+    if (rola == RolaSieciowa::Regulator) {
+        updatePidParams();
+        updateGeneratorParams();
+    }
     zastosujBlokadyTrybuSieciowego(rola);
-    MenadzerSymulacji::TrybPracy tryb = (rola == RolaSieciowa::Regulator)
-                                            ? MenadzerSymulacji::TrybPracy::SiecRegulator
-                                            : MenadzerSymulacji::TrybPracy::SiecObiekt;
-    manager->setTrybPracy(tryb);
-
+    menadzerSieci->wyslijPelnaKonfiguracje();
     QString rolaNazwa = (rola == RolaSieciowa::Regulator) ? "Regulator" : "Obiekt";
     QString trybNazwa = jakoSerwer ? "Serwer" : "Klient";
-
     _labelStatusSieci->setText(
         QString("  [%1/%2] Połączono z: %3 (port %4)  ")
             .arg(rolaNazwa).arg(trybNazwa).arg(ip).arg(port));
 
     QMessageBox::information(
         this, "Połączono",
-        QString("Połączono z instancją pod adresem: %1\nPort: %2\nRola: %3\nTryb: %4")
-            .arg(ip).arg(port).arg(rolaNazwa).arg(trybNazwa));
+        QString("Połączono z instancją pod adresem: %1\nRola: %2")
+            .arg(ip).arg(rolaNazwa));
 }
 
 void MainWindow::onRozlaczenieZewnetrzne()

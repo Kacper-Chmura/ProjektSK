@@ -93,11 +93,13 @@ void MenadzerSieci::wyslijKonfiguracjeGeneratora()
 
 void MenadzerSieci::wyslijPelnaKonfiguracje()
 {
-    wyslijKonfiguracjePID();
-    wyslijKonfiguracjeARX();
-    wyslijKonfiguracjeGeneratora();
+    if (_rola == RolaSieciowa::Regulator) {
+        wyslijKonfiguracjePID();
+        wyslijKonfiguracjeGeneratora();
+    } else if (_rola == RolaSieciowa::Obiekt) {
+        wyslijKonfiguracjeARX();
+    }
 }
-
 static QString pobierzLokalneIP()
 {
     for (const QNetworkInterface& iface : QNetworkInterface::allInterfaces()) {
@@ -120,8 +122,7 @@ void MenadzerSieci::onKlientPolaczony(QString adres, int port)
     QByteArray info = serializeInfoPolaczenia(static_cast<int>(_rola), lokalneIP);
     _klient->wyslijRamke(static_cast<quint8>(TypRamki::InfoPolaczenia), info);
 
-    wyslijPelnaKonfiguracje();
-
+    // Usunięto: wyslijPelnaKonfiguracje(); -> wywołamy to w MainWindow po sync GUI
     emit polaczonySygnal(adres, port, false);
 }
 
@@ -148,11 +149,9 @@ void MenadzerSieci::onNowyKlientSerwer(QString adres)
     QByteArray info = serializeInfoPolaczenia(static_cast<int>(_rola), lokalneIP);
     _serwer->wyslijRamke(static_cast<quint8>(TypRamki::InfoPolaczenia), info, 0);
 
-    wyslijPelnaKonfiguracje();
-
+    // Usunięto: wyslijPelnaKonfiguracje();
     emit polaczonySygnal(adres, _zdalnyPort, true);
 }
-
 void MenadzerSieci::onKlientSerwRozlaczony(int)
 {
     if (_polaczony) {
