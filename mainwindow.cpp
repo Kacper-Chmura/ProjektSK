@@ -66,7 +66,12 @@ MainWindow::MainWindow(QWidget *parent)
     _labelStatusSieci->setFrameStyle(QFrame::Panel | QFrame::Sunken);
     statusBar()->addPermanentWidget(_labelStatusSieci);
 
-    ui->btnRozlacz->setEnabled(false);
+    _labelWydajnosc = new QLabel(this);
+    _labelWydajnosc->setFixedSize(20, 20);
+    _labelWydajnosc->setStyleSheet("background-color: gray; border: 1px solid black;");
+    statusBar()->addPermanentWidget(_labelWydajnosc);
+
+    connect(manager, &MenadzerSymulacji::sygnalWydajnosci, this, &MainWindow::onSygnalWydajnosci);
 }
 
 MainWindow::~MainWindow()
@@ -399,15 +404,26 @@ void MainWindow::on_btnRozlacz_clicked()
 void MainWindow::onPolaczono(QString ip, int port, bool jakoSerwer)
 {
     _trybSieciowy = true;
+
     RolaSieciowa rola = menadzerSieci->getRole();
+
+    MenadzerSymulacji::TrybPracy tryb = (rola == RolaSieciowa::Regulator)
+                                            ? MenadzerSymulacji::TrybPracy::SiecRegulator
+                                            : MenadzerSymulacji::TrybPracy::SiecObiekt;
+    manager->setTrybPracy(tryb);
+
     if (rola == RolaSieciowa::Regulator) {
         updatePidParams();
         updateGeneratorParams();
     }
+
     zastosujBlokadyTrybuSieciowego(rola);
+
     menadzerSieci->wyslijPelnaKonfiguracje();
+
     QString rolaNazwa = (rola == RolaSieciowa::Regulator) ? "Regulator" : "Obiekt";
     QString trybNazwa = jakoSerwer ? "Serwer" : "Klient";
+
     _labelStatusSieci->setText(
         QString("  [%1/%2] Połączono z: %3 (port %4)  ")
             .arg(rolaNazwa).arg(trybNazwa).arg(ip).arg(port));
@@ -551,6 +567,8 @@ void MainWindow::odblokujWszystko()
     ui->btnSave->setEnabled(true);
     ui->btnLoad->setEnabled(true);
     ui->btnOpenARX->setEnabled(true);
+
+    _labelWydajnosc->setStyleSheet("background-color: gray; border: 1px solid black;");
 }
 
 void MainWindow::odswiezGUIPID()
@@ -598,3 +616,11 @@ void MainWindow::odswiezGUIGenerator()
 void MainWindow::onLocalPidChanged()     { if (_trybSieciowy) menadzerSieci->wyslijKonfiguracjePID(); }
 void MainWindow::onLocalArxChanged()     { if (_trybSieciowy) menadzerSieci->wyslijKonfiguracjeARX(); }
 void MainWindow::onLocalGeneratorChanged(){ if (_trybSieciowy) menadzerSieci->wyslijKonfiguracjeGeneratora(); }
+void MainWindow::onSygnalWydajnosci(bool wyrabiaSie)
+{
+    if (wyrabiaSie) {
+        _labelWydajnosc->setStyleSheet("background-color: green; border: 1px solid black;");
+    } else {
+        _labelWydajnosc->setStyleSheet("background-color: red; border: 1px solid black;");
+    }
+}

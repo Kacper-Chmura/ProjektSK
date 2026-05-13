@@ -76,6 +76,7 @@ signals:
                        RegulatorPID::Skladowe skladowe);
     void wyslijRamkeRegulatora(double czas, double w, double u);
     void wyslijRamkeObiektu(double czas, double y);
+    void sygnalWydajnosci(bool wyrabiaSie);
 private:
     RegulatorPID _regulator;
     ModelARX _model;
@@ -91,4 +92,5 @@ private:
 
     ZarzadzanieCzasem* _czasownik;
     TrybPracy _trybPracy = TrybPracy::Stacjonarny;
+    bool _czy_dane_dotarly = true;
 };

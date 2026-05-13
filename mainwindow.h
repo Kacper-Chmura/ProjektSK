@@ -51,6 +51,7 @@ private slots:
     void onLocalPidChanged();
     void onLocalArxChanged();
     void onLocalGeneratorChanged();
+    void onSygnalWydajnosci(bool wyrabiaSie);
 
 private:
     Ui::MainWindow *ui;
@@ -73,4 +74,5 @@ private:
     void odswiezGUIARX();
 
     bool _trybSieciowy = false;
+    QLabel* _labelWydajnosc;
 };

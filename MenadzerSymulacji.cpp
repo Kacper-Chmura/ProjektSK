@@ -43,11 +43,14 @@ void MenadzerSymulacji::wykonajKrokSymulacji(double czas)
         emit noweDataReady(czas, wartoscZadana, y, u, e, skladowe);
 
     } else if (_trybPracy == TrybPracy::SiecRegulator) {
+
+        emit sygnalWydajnosci(_czy_dane_dotarly);
+        _czy_dane_dotarly = false; // Reset na kolejny cykl zegara
+
         double uchyb = wartoscZadana - _ostatnia_wartosc_regulowana;
         double u = _regulator.symuluj(uchyb);
 
         emit wyslijRamkeRegulatora(czas, wartoscZadana, u);
-
         emit noweDataReady(czas, wartoscZadana, _ostatnia_wartosc_regulowana, u, uchyb, _regulator.getOstatnieSkladowe());
     }
 }
@@ -60,6 +63,7 @@ void MenadzerSymulacji::setTrybPracy(TrybPracy tryb) {
 }
 void MenadzerSymulacji::aktualizujZSieciObiekt(double y) {
     _ostatnia_wartosc_regulowana = y;
+    _czy_dane_dotarly = true; // Dane z obiektu zdążyły dotrzeć
 }
 
 void MenadzerSymulacji::aktualizujZSieciRegulator(double czas, double w, double u) {
@@ -98,6 +102,7 @@ void MenadzerSymulacji::resetSymulacji() {
 }
 void MenadzerSymulacji::startSymulacji() {
     _symulacja_uruchomiona = true;
+    _czy_dane_dotarly = true; // reset na start
     _czasownik->start();
 }
 void MenadzerSymulacji::stopSymulacji() {
