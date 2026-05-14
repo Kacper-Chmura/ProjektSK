@@ -72,6 +72,8 @@ public:
     double getGenWypelnienie() const;
     double getGenSkladowaStala() const;
 
+    double getOstatniCzasSieci() const { return _ostatni_czas_sieci; }
+
 signals:
     void noweDataReady(double czas, double y_zad, double y, double u, double e,
                        RegulatorPID::Skladowe skladowe);
@@ -90,6 +92,7 @@ private:
     double _ostatnia_wartosc_zadana;
     double _ostatnia_wartosc_regulowana;
     bool _symulacja_uruchomiona;
+    double _ostatni_czas_sieci = 0.0;
 
     ZarzadzanieCzasem* _czasownik;
     TrybPracy _trybPracy = TrybPracy::Stacjonarny;

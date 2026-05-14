@@ -59,14 +59,17 @@ void MenadzerSymulacji::setTrybPracy(TrybPracy tryb) {
     _trybPracy = tryb;
     if (_trybPracy == TrybPracy::Stacjonarny) {
         _symulator.setYOpozniona(_ostatnia_wartosc_regulowana);
+        double e_biezacy = _ostatnia_wartosc_zadana - _ostatnia_wartosc_regulowana;
+        _regulator.setUchybPoprzedni(e_biezacy);
     }
 }
 void MenadzerSymulacji::aktualizujZSieciObiekt(double y) {
     _ostatnia_wartosc_regulowana = y;
-    _czy_dane_dotarly = true; // Dane z obiektu zdążyły dotrzeć
+    _czy_dane_dotarly = true;
 }
 
 void MenadzerSymulacji::aktualizujZSieciRegulator(double czas, double w, double u) {
+    _ostatni_czas_sieci = czas;
     double y = _model.symuluj(u);
     _ostatnia_wartosc_regulowana = y;
     _ostatnia_wartosc_zadana = w;
@@ -102,13 +105,12 @@ void MenadzerSymulacji::resetSymulacji() {
 }
 void MenadzerSymulacji::startSymulacji() {
     _symulacja_uruchomiona = true;
-    _czy_dane_dotarly = true; // reset na start
+    _czy_dane_dotarly = true;
     _czasownik->start();
 }
 void MenadzerSymulacji::stopSymulacji() {
     _symulacja_uruchomiona = false;
     _czasownik->stop();
-    // Niepotrzebnie: _regulator.resetCalki();
 }
 
 bool MenadzerSymulacji::czySymulacjaUruchomiona() const { return _symulacja_uruchomiona; }

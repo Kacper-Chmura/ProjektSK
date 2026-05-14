@@ -20,6 +20,7 @@ public:
     void stop();
     void reset();
     bool czyUruchomiony() const;
+    void setCzasSymulacji(double t) { _czasSymulacji = t; }
 
 private slots:
     void onTimeout();

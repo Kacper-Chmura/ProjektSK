@@ -16,6 +16,7 @@ public:
 
     void resetPamieci();
     void resetCalki();
+    void setUchybPoprzedni(double e) { _Uchyb_poprz = e; }
 
     void setLiczCalk(LiczCalk tryb);
     void setStalaCalk(double Ti);

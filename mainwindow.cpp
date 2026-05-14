@@ -174,7 +174,7 @@ void MainWindow::updatePlots(double t, double y_zad, double y, double u, double 
 }
 
 void MainWindow::onNoweData(double t, double y_zad, double y, double u, double e,
-                             RegulatorPID::Skladowe skladowe)
+                            RegulatorPID::Skladowe skladowe)
 {
     updatePlots(t, y_zad, y, u, e, skladowe);
 }
@@ -210,6 +210,7 @@ void MainWindow::on_btnReset_clicked()
         menadzerSieci->wyslijReset();
     }
 }
+
 void MainWindow::on_btnUpdatePID_clicked()
 {
     double Kp = ui->spinKp->value();
@@ -351,7 +352,7 @@ void MainWindow::on_btnLoad_clicked()
     }
 
     manager->setParametryARX(arxDialog->getA(), arxDialog->getB(),
-                              j["ARX"]["k"], j["ARX"]["noise"]);
+                             j["ARX"]["k"], j["ARX"]["noise"]);
     if (j["ARX"].contains("ograniczenia_wlaczone")) {
         manager->setOgraniczeniaARX(j["ARX"]["ograniczenia_wlaczone"]);
         manager->setOgraniczeniaSterowania(j["ARX"]["u_min"], j["ARX"]["u_max"]);
@@ -375,7 +376,7 @@ void MainWindow::on_btnPolacz_clicked()
     if (kp.czyJestSerwer) {
         if (!menadzerSieci->startujSerwer(kp.port)) {
             QMessageBox::critical(this, "Błąd", "Nie można uruchomić serwera na porcie "
-                                                + QString::number(kp.port) + ".");
+                                                      + QString::number(kp.port) + ".");
             return;
         }
         _labelStatusSieci->setText(QString("  Serwer – nasłuchuję na porcie %1...  ").arg(kp.port));
@@ -401,11 +402,18 @@ void MainWindow::on_btnRozlacz_clicked()
     if (ret != QMessageBox::Yes) return;
 
     bool bylAktywny = manager->czySymulacjaUruchomiona();
+    bool bylObiektem = (menadzerSieci->getRole() == RolaSieciowa::Obiekt);
 
     menadzerSieci->rozlacz();
     _trybSieciowy = false;
 
     manager->setTrybPracy(MenadzerSymulacji::TrybPracy::Stacjonarny);
+
+    if (bylObiektem) {
+        double tSieci = manager->getOstatniCzasSieci();
+        manager->getZarzadzanieCzasem()->setCzasSymulacji(tSieci);
+    }
+    wstawPrzerweWykresow();
 
     if (bylAktywny) {
         manager->startSymulacji();
@@ -454,8 +462,14 @@ void MainWindow::onPolaczono(QString ip, int port, bool jakoSerwer)
 void MainWindow::onRozlaczenieZewnetrzne()
 {
     bool bylAktywny = manager->czySymulacjaUruchomiona();
+    bool bylObiektem = (menadzerSieci->getRole() == RolaSieciowa::Obiekt);
 
     manager->setTrybPracy(MenadzerSymulacji::TrybPracy::Stacjonarny);
+
+    if (bylObiektem) {
+        double tSieci = manager->getOstatniCzasSieci();
+        manager->getZarzadzanieCzasem()->setCzasSymulacji(tSieci);
+    }
 
     if (bylAktywny) {
         manager->startSymulacji();
@@ -468,6 +482,7 @@ void MainWindow::onRozlaczenieZewnetrzne()
     ui->btnRozlacz->setEnabled(false);
     _labelStatusSieci->setText("  Tryb: stacjonarny (utracono połączenie)  ");
 
+    wstawPrzerweWykresow();
     QMessageBox::warning(this, "Utracono połączenie",
                          "Połączenie z drugą instancją zostało zerwane!\n"
                          "Aplikacja przeszła w tryb stacjonarny.\n"
@@ -595,6 +610,16 @@ void MainWindow::odblokujWszystko()
     _labelWydajnosc->setStyleSheet("background-color: gray; border: 1px solid black;");
 }
 
+void MainWindow::wstawPrzerweWykresow()
+{
+    double t = manager->getZarzadzanieCzasem()->getCzasSymulacji();
+    QVector<QCustomPlot*> plots = {ui->plotMain, ui->plotError, ui->plotControl, ui->plotPID};
+    for (auto plot : plots) {
+        for (int i = 0; i < plot->graphCount(); ++i)
+            plot->graph(i)->addData(t, qQNaN());
+    }
+}
+
 void MainWindow::odswiezGUIPID()
 {
     const RegulatorPID* pid = manager->getPID();
@@ -640,6 +665,7 @@ void MainWindow::odswiezGUIGenerator()
 void MainWindow::onLocalPidChanged()     { if (_trybSieciowy) menadzerSieci->wyslijKonfiguracjePID(); }
 void MainWindow::onLocalArxChanged()     { if (_trybSieciowy) menadzerSieci->wyslijKonfiguracjeARX(); }
 void MainWindow::onLocalGeneratorChanged(){ if (_trybSieciowy) menadzerSieci->wyslijKonfiguracjeGeneratora(); }
+
 void MainWindow::onSygnalWydajnosci(bool wyrabiaSie)
 {
     if (wyrabiaSie) {

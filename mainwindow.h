@@ -53,6 +53,8 @@ private slots:
     void onLocalGeneratorChanged();
     void onSygnalWydajnosci(bool wyrabiaSie);
 
+    void wstawPrzerweWykresow();
+
 private:
     Ui::MainWindow *ui;
     MenadzerSymulacji *manager;
@@ -76,3 +78,4 @@ private:
     bool _trybSieciowy = false;
     QLabel* _labelWydajnosc;
 };
+
