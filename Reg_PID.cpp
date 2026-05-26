@@ -57,23 +57,20 @@ double RegulatorPID::symuluj(double uchyb) {
     // 1. Człon Proporcjonalny (P)
     double P = _Kp * uchyb;
 
-    // 2. Człon Różniczkujący (D) - bez wymnażania przez Kp
-    double D = 0.0;
-    if (_Tp > EPS) {
-        D = _Td * (uchyb - _Uchyb_poprz) / _Tp;
-    }
+    // 2. Człon Różniczkujący (D) - omijamy _Tp, tak jak we wzorcu
+    double D = _Td * (uchyb - _Uchyb_poprz);
 
-    // 3. Człon Całkujący (I) - bez wymnażania przez Kp
+    // 3. Człon Całkujący (I) - omijamy _Tp, tak jak we wzorcu
     double I_tent = 0.0;
     double S_tent = 0.0;
 
     if (_Ti > EPS) {
         if (_liczCalk == LiczCalk::Wew) {
-            double przyrost = (uchyb * _Tp) / _Ti;
+            double przyrost = uchyb / _Ti; // Tu był błąd mieli: przyrost = (uchyb * _Tp) / _Ti;
             S_tent = _Suma_uchyb_wew + przyrost;
             I_tent = S_tent;
         } else {
-            S_tent = _Suma_uchyb_zew + (uchyb * _Tp);
+            S_tent = _Suma_uchyb_zew + uchyb;
             I_tent = S_tent / _Ti;
         }
     } else {
@@ -81,22 +78,20 @@ double RegulatorPID::symuluj(double uchyb) {
         S_tent = (_liczCalk == LiczCalk::Wew) ? _Suma_uchyb_wew : _Suma_uchyb_zew;
     }
 
+    // Zapisujemy historię całki (Brak Anti-Windupu - całka zawsze rośnie)
+    if (_liczCalk == LiczCalk::Wew) {
+        _Suma_uchyb_wew = S_tent;
+    } else {
+        _Suma_uchyb_zew = S_tent;
+    }
+
     _ostatnieSkladowe = { P, I_tent, D };
+    _Uchyb_poprz = uchyb;
 
-    // Saturacja
-    double u_niesatur = P + I_tent + D;
-    double u_satur = u_niesatur;
-
+    // Saturacja na samym końcu
+    double u_satur = P + I_tent + D;
     if (u_satur > _U_max) u_satur = _U_max;
     else if (u_satur < _U_min) u_satur = _U_min;
 
-    // Anti-windup
-    bool nasycenie = (std::abs(u_satur - u_niesatur) > EPS);
-    if (!nasycenie) {
-        if (_liczCalk == LiczCalk::Wew) _Suma_uchyb_wew = S_tent;
-        else _Suma_uchyb_zew = S_tent;
-    }
-
-    _Uchyb_poprz = uchyb;
     return u_satur;
 }
