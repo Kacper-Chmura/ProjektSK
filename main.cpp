@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
     parser.addOption(QCommandLineOption("klient", "Uruchom testowy klient sieciowy"));  // Zamiast --sieci
     parser.process(a);
 
-    if (parser.isSet("test")) {
+    //if (parser.isSet("test")) {
         std::cout << "start testów" << std::endl;
 
         wykonaj_moje_testy();
@@ -127,8 +127,8 @@ int main(int argc, char *argv[])
         std::cout << "WYNIK KONCOWY: " << passed_tests << " / " << total_tests
                   << " testow zaliczonych." << std::endl;
 
-        return 0;
-    }
+      //  return 0;
+    //}
 
     if (parser.isSet("serwer")) {
         std::cout << "--- TRYB KONSOLOWY: SERWER ---" << std::endl;
