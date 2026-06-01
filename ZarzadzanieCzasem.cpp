@@ -8,7 +8,7 @@ ZarzadzanieCzasem::ZarzadzanieCzasem(MenadzerSymulacji* manager, QObject *parent
     , _czasSymulacji(0.0)
     , _manager(manager)
 {
-    _timer->setTimerType(Qt::CoarseTimer);
+    _timer->setTimerType(Qt::PreciseTimer);  // ZMIANA: CoarseTimer → PreciseTimer
     connect(_timer, &QTimer::timeout, this, &ZarzadzanieCzasem::onTimeout);
 }
 

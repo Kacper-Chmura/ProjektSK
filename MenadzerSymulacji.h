@@ -73,6 +73,7 @@ public:
     double getGenSkladowaStala() const;
 
     double getOstatniCzasSieci() const { return _ostatni_czas_sieci; }
+    void resetFlagiWydajnosci() { _czy_dane_dotarly = true; }
 
 signals:
     void noweDataReady(double czas, double y_zad, double y, double u, double e,

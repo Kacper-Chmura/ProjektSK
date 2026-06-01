@@ -45,7 +45,7 @@ void MenadzerSymulacji::wykonajKrokSymulacji(double czas)
     } else if (_trybPracy == TrybPracy::SiecRegulator) {
 
         emit sygnalWydajnosci(_czy_dane_dotarly);
-        _czy_dane_dotarly = false; // Reset na kolejny cykl zegara
+        _czy_dane_dotarly = false;
 
         double uchyb = wartoscZadana - _ostatnia_wartosc_regulowana;
         double u = _regulator.symuluj(uchyb);
@@ -57,12 +57,18 @@ void MenadzerSymulacji::wykonajKrokSymulacji(double czas)
 
 void MenadzerSymulacji::setTrybPracy(TrybPracy tryb) {
     _trybPracy = tryb;
+
     if (_trybPracy == TrybPracy::Stacjonarny) {
         _symulator.setYOpozniona(_ostatnia_wartosc_regulowana);
         double e_biezacy = _ostatnia_wartosc_zadana - _ostatnia_wartosc_regulowana;
         _regulator.setUchybPoprzedni(e_biezacy);
     }
+
+    if (_trybPracy == TrybPracy::SiecObiekt) {
+        _czasownik->stop();
+    }
 }
+
 void MenadzerSymulacji::aktualizujZSieciObiekt(double y) {
     _ostatnia_wartosc_regulowana = y;
     _czy_dane_dotarly = true;

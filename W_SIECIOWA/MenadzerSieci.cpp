@@ -14,6 +14,7 @@ MenadzerSieci::MenadzerSieci(MenadzerSymulacji* manager, QObject* parent)
     connect(_klient, &MyTCPClient::connected,    this, &MenadzerSieci::onKlientPolaczony);
     connect(_klient, &MyTCPClient::disconnected, this, &MenadzerSieci::onKlientRozlaczony);
     connect(_klient, &MyTCPClient::nowaRamka,    this, &MenadzerSieci::onNowaRamkaKlient);
+    connect(_klient, &MyTCPClient::bladPolaczenia, this, &MenadzerSieci::bladPolaczenia);
 
     connect(_serwer, &MyTCPServer::newClientConnected, this, &MenadzerSieci::onNowyKlientSerwer);
     connect(_serwer, &MyTCPServer::clientDisconnetced, this, &MenadzerSieci::onKlientSerwRozlaczony);

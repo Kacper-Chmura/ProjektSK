@@ -8,6 +8,10 @@ MyTCPClient::MyTCPClient(QObject *parent) : QObject(parent), m_socket(this)
     connect(&m_socket, SIGNAL(connected()),    this, SLOT(slot_connected()));
     connect(&m_socket, SIGNAL(disconnected()), this, SIGNAL(disconnected()));
     connect(&m_socket, SIGNAL(readyRead()),    this, SLOT(slot_readyRead()));
+    connect(&m_socket, &QAbstractSocket::errorOccurred,
+            this, [this](QAbstractSocket::SocketError) {
+                emit bladPolaczenia(m_socket.errorString());
+            });
 }
 
 void MyTCPClient::connectTo(QString address, int port) {

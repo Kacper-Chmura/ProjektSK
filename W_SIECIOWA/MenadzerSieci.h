@@ -53,6 +53,7 @@ signals:
     void polaczonySygnal(QString zdalneIP, int zdalnyPort, bool jakoSerwer);
     void rozlaczenieZewnetrzne();
     void konfiguracjaOdebrana(TypRamki typ);
+    void bladPolaczenia(QString komunikat);
 
 private slots:
     void onKlientPolaczony(QString adres, int port);

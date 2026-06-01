@@ -28,6 +28,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(menadzerSieci, &MenadzerSieci::polaczonySygnal,      this, &MainWindow::onPolaczono);
     connect(menadzerSieci, &MenadzerSieci::rozlaczenieZewnetrzne, this, &MainWindow::onRozlaczenieZewnetrzne);
     connect(menadzerSieci, &MenadzerSieci::konfiguracjaOdebrana,  this, &MainWindow::onKonfiguracjaOdebrana);
+    connect(menadzerSieci, &MenadzerSieci::bladPolaczenia, this, [this](QString msg){
+        QMessageBox::critical(this, "Błąd połączenia", "Nie można połączyć się z serwerem:\n" + msg);
+        ui->btnPolacz->setEnabled(true);
+        ui->btnRozlacz->setEnabled(false);
+        _labelStatusSieci->setText("  Tryb: stacjonarny  ");
+    });
 
     arxDialog        = new DialogARX(this);
     dialogPolaczenia = new DialogPolaczenia(this);
@@ -250,7 +256,7 @@ void MainWindow::on_btnOpenARX_clicked()
         manager->setOgraniczeniaSterowania(arxDialog->getUMin(), arxDialog->getUMax());
         manager->setOgraniczeniaRegulowanej(arxDialog->getYMin(), arxDialog->getYMax());
 
-        if (_trybSieciowy)
+        if (_trybSieciowy && menadzerSieci->getRole() == RolaSieciowa::Obiekt)
             menadzerSieci->wyslijKonfiguracjeARX();
     }
 }
@@ -363,10 +369,11 @@ void MainWindow::on_btnLoad_clicked()
 void MainWindow::on_btnPolacz_clicked()
 {
     ui->btnPolacz->setEnabled(false);
-    ui->btnPolacz->setEnabled(true);
 
-    if (dialogPolaczenia->exec() != QDialog::Accepted)
+    if (dialogPolaczenia->exec() != QDialog::Accepted) {
+        ui->btnPolacz->setEnabled(true);
         return;
+    }
 
     KonfiguracjaPolaczenia kp = dialogPolaczenia->getKonfiguracja();
 
@@ -376,17 +383,16 @@ void MainWindow::on_btnPolacz_clicked()
     if (kp.czyJestSerwer) {
         if (!menadzerSieci->startujSerwer(kp.port)) {
             QMessageBox::critical(this, "Błąd", "Nie można uruchomić serwera na porcie "
-                                                      + QString::number(kp.port) + ".");
+                                                    + QString::number(kp.port) + ".");
+            ui->btnPolacz->setEnabled(true);
             return;
         }
         _labelStatusSieci->setText(QString("  Serwer – nasłuchuję na porcie %1...  ").arg(kp.port));
-        ui->btnPolacz->setEnabled(false);
         ui->btnRozlacz->setEnabled(true);
     } else {
         menadzerSieci->polaczJakoKlient(kp.adresIP, kp.port);
         _labelStatusSieci->setText(QString("  Klient – łączę z %1:%2...  ")
                                        .arg(kp.adresIP).arg(kp.port));
-        ui->btnPolacz->setEnabled(false);
         ui->btnRozlacz->setEnabled(true);
     }
 }
@@ -439,7 +445,10 @@ void MainWindow::onPolaczono(QString ip, int port, bool jakoSerwer)
     if (rola == RolaSieciowa::Regulator) {
         updatePidParams();
         updateGeneratorParams();
+
+        manager->resetFlagiWydajnosci();
     } else {
+
         manager->ustawAktywny(true);
     }
 

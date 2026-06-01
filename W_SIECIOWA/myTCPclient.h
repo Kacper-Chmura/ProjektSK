@@ -21,6 +21,7 @@ signals:
     void connected(QString adr, int port);
     void disconnected();
     void nowaRamka(int typ, QByteArray payload);
+    void bladPolaczenia(QString komunikat);
 
 private slots:
     void slot_connected();
