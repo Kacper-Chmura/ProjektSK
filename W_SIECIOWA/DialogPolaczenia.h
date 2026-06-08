@@ -23,17 +23,13 @@ public:
 
     KonfiguracjaPolaczenia getKonfiguracja() const;
 
-
 private slots:
     void on_btnPotwierdz_clicked();
     void on_btnAnuluj_clicked();
     void on_radioSerwer_toggled(bool checked);
-    void on_radioKlient_toggled(bool checked);
-
 
 private:
     Ui::DialogPolaczenia* ui;
-    QString pobierzLokalnyIP();
 };
 
 #endif // DIALOGPOLACZENIA_H
