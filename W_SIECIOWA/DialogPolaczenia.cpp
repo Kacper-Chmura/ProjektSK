@@ -42,6 +42,7 @@ KonfiguracjaPolaczenia DialogPolaczenia::getKonfiguracja() const
 
 void DialogPolaczenia::on_radioSerwer_toggled(bool checked)
 {
+    ui->editIP->setText("127.0.0.1");
     ui->labelIP->setEnabled(!checked);
     ui->editIP->setEnabled(!checked);
 }
