@@ -78,6 +78,17 @@ MainWindow::MainWindow(QWidget *parent)
     statusBar()->addPermanentWidget(_labelWydajnosc);
 
     connect(manager, &MenadzerSymulacji::sygnalWydajnosci, this, &MainWindow::onSygnalWydajnosci);
+
+    connect(manager, &MenadzerSymulacji::sygnalWydajnosci, this, &MainWindow::onSygnalWydajnosci);
+
+    double startWindow = ui->spinWindow->value();
+
+    QVector<QCustomPlot*> plots = {ui->plotMain, ui->plotError, ui->plotControl, ui->plotPID};
+    for (auto plot : plots) {
+        plot->xAxis->setRange(0.0, startWindow);
+        plot->replot();
+    }
+
 }
 
 MainWindow::~MainWindow()
@@ -151,26 +162,37 @@ void MainWindow::updatePlots(double t, double y_zad, double y, double u, double 
 
     QVector<QCustomPlot*> plots = {ui->plotMain, ui->plotError, ui->plotControl, ui->plotPID};
     for (auto plot : plots) {
-        plot->xAxis->setRange(qMax(0.0, t - window), qMax(window, t));
+        double xMin = qMax(0.0, t - window);
+        double xMax = qMax(window, t);
+
+        plot->xAxis->setRange(xMin, xMax);
 
         for (int i = 0; i < plot->graphCount(); ++i)
             plot->graph(i)->data()->removeBefore(t - 1000.0);
 
-        bool maRealnedane = false;
+        double yMin = std::numeric_limits<double>::max();
+        double yMax = -std::numeric_limits<double>::max();
+        bool saVisibleDane = false;
+
         for (int i = 0; i < plot->graphCount(); ++i) {
             auto data = plot->graph(i)->data();
             for (auto it = data->begin(); it != data->end(); ++it) {
-                if (std::abs(it->value) > 1e-9) { maRealnedane = true; break; }
+                if (it->key >= xMin && it->key <= xMax) {
+                    if (it->value < yMin) yMin = it->value;
+                    if (it->value > yMax) yMax = it->value;
+                    saVisibleDane = true;
+                }
             }
-            if (maRealnedane) break;
         }
 
-        if (maRealnedane) {
-            plot->yAxis->rescale();
-            QCPRange range = plot->yAxis->range();
-            double center = range.center();
-            double size   = (range.size() < 1e-6) ? 1.0 : range.size();
-            plot->yAxis->setRange(center - size * 0.6, center + size * 0.6);
+        if (saVisibleDane) {
+            double roznica = yMax - yMin;
+            if (roznica < 1e-6) {
+                roznica = 1.0;
+            }
+
+            double center = (yMax + yMin) / 2.0;
+            plot->yAxis->setRange(center - roznica * 0.6, center + roznica * 0.6);
         } else {
             plot->yAxis->setRange(-1.0, 1.0);
         }
@@ -178,7 +200,6 @@ void MainWindow::updatePlots(double t, double y_zad, double y, double u, double 
         plot->replot(QCustomPlot::rpQueuedReplot);
     }
 }
-
 void MainWindow::onNoweData(double t, double y_zad, double y, double u, double e,
                             RegulatorPID::Skladowe skladowe)
 {
