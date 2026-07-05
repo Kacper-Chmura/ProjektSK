@@ -168,7 +168,7 @@ void MainWindow::updatePlots(double t, double y_zad, double y, double u, double 
         plot->xAxis->setRange(xMin, xMax);
 
         for (int i = 0; i < plot->graphCount(); ++i)
-            plot->graph(i)->data()->removeBefore(t - 1000.0);
+            plot->graph(i)->data()->removeBefore(xMin);
 
         double yMin = std::numeric_limits<double>::max();
         double yMax = -std::numeric_limits<double>::max();
